@@ -20,11 +20,16 @@ import environ
 from .models import APIKey
 from .serializers import *
 from accounts.models import User
+from bson.objectid import ObjectId
+from bson.errors import InvalidId
+from django.core.exceptions import ObjectDoesNotExist
+from pymongo.errors import ConnectionFailure
 from django.shortcuts import get_object_or_404
 env = environ.Env()
 environ.Env.read_env()
 
 class APIKeyAPIView(APIView):
+    permission_classes = (IsAuthenticated, IsAdminUser)
     def post(self, request):
         try:
             user = User.objects.get(pk=request.user.pk)
@@ -82,7 +87,7 @@ class ParseAPIView(APIView):
 
                 Document.objects.create(file_id=collection_name)
 
-        except pymongo.errors.ServerSelectionTimeoutError as err:
+        except ConnectionFailure:
             return Response(server_error(self, "Unable to connect to MongoDB"))
 
         if not zipfile.is_zipfile(filepath):
@@ -111,11 +116,11 @@ class ParseAPIView(APIView):
             return Response(created(self, errors))
         return Response(created(self, "Data inserted successfully"))
 
-    def get(self, request):
+    def get(self, request, format = None):
         try:
             client = MongoClient(host=env('MONGO_DB_HOST'))
             db = client[env('MONGO_DB_NAME')]
-        except pymongo.errors.ConnectionFailure:
+        except ConnectionFailure:
             return Response(server_error(self, "MongoDB server is not available"))
         except Exception as e:
             return Response(server_error(self, str(e)))
@@ -144,3 +149,29 @@ class ParseAPIView(APIView):
         cursor = db[file_id].find({"$and": query})
         
         return StreamingHttpResponse(stream_results(self, cursor, regex_product),content_type='application/json')
+
+class ImageBGRemovalAPIView(APIView):
+    def get(self, request):
+        document_id = request.GET.get('document_id')
+        try:
+            client = MongoClient(host=env('MONGO_DB_HOST'))
+            db = client[env('MONGO_DB_NAME')]
+            file_id = Document.objects.latest('id').file_id
+            document = db[file_id].find_one({'_id': ObjectId(document_id)})
+        except (ConnectionFailure, ObjectDoesNotExist, InvalidId) as error:
+            if isinstance(error, ConnectionFailure):
+                error_message = "MongoDB server is not available"
+            elif isinstance(error, ObjectDoesNotExist):
+                error_message = "No Document objects exist"
+            elif isinstance(error, InvalidId):
+                error_message = "Invalid ID"
+            return Response(server_error(self, error_message))
+        except Exception as e:
+            return Response(server_error(self, str(e)))
+        if document:
+            result = {
+                "cdn_urls": document.get('CDN_URLS')
+            }
+            return Response(success(self, result))
+        else:
+            return Response(error(self, "Document not found"))
