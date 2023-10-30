@@ -171,11 +171,11 @@ class ImageBGRemovalAPIView(APIView):
             return Response(server_error(self, str(e)))
         if document:
             if image_url:
-                new_img = remove_background(self, image_url)
-                db[file_id].update_one({"_id": ObjectId(document_id)}, {"$set": {"new_img": new_img}})
+                trans_img = remove_background(self, image_url)
+                db[file_id].update_one({"_id": ObjectId(document_id)}, {"$set": {"new_img": trans_img}})
             result = {
                 "cdn_urls": document.get('CDN_URLS'),
-                "new_img": new_img,
+                "trans_img": trans_img,
             }
             return Response(success(self, result))
         else:
