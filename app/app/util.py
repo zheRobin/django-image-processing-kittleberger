@@ -1,5 +1,11 @@
 from rest_framework import status
-
+import boto3
+from botocore.config import Config
+from botocore.exceptions import NoCredentialsError
+from rest_framework.response import Response
+import environ
+env = environ.Env()
+environ.Env.read_env()
 def success(self, data):
     response = {
         "data": data,
@@ -70,3 +76,23 @@ def server_error(self, message="Unkown Error"):
         "code": status.HTTP_501_NOT_IMPLEMENTED
     }
     return response
+def get_s3_config():
+    session = boto3.Session(
+        aws_access_key_id=env('S3_ACCESS_KEY_ID'),
+        aws_secret_access_key=env('S3_SECRET_ACCESS_KEY'),
+        region_name=env('S3_REGION_NAME')
+    )
+    s3_client = session.client(
+        's3',
+        endpoint_url=env('S3_ENDPOINT_URL'),
+        config=Config(signature_version='s3v4',
+        retries={'max_attempts': 10, 'mode': 'standard'})
+    )
+    return s3_client
+def s3_upload(self, file, path):
+    s3_client, s3_bucket, s3_endpoint = get_s3_config(), env('S3_BUCKET_NAME'), env('S3_ENDPOINT_URL')
+    try:
+        s3_client.upload_fileobj(file, s3_bucket, path)
+    except NoCredentialsError:
+        return Response(error(self, "No AWS credentials found"))
+    return s3_endpoint + path

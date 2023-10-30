@@ -1,10 +1,8 @@
 from django.conf import settings
 from lxml import etree as ET
 import json
-import cv2
 import requests
 from rembg import remove
-import numpy as np
 from PIL import Image
 from io import BytesIO
 import time
@@ -57,7 +55,7 @@ def stream_results(self, cursor, regex):
 def remove_background(self, input_path):
     response = requests.get(input_path)
     input_img = response.content
-    output_path = STATIC_URL + '\\'+ str(time.time()) + '.png'
+    output_path = STATIC_URL + '\\'+ str(int(time.time())) + '.png'
     output_img = remove(input_img)
     img = Image.open(BytesIO(output_img))
     img.save(output_path, "PNG")

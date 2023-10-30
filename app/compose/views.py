@@ -7,60 +7,30 @@ from rest_framework.permissions import IsAuthenticated
 import uuid
 from .models import *
 from .serializers import *
-import boto3
-from botocore.config import Config
-from botocore.exceptions import NoCredentialsError
 from django.core.exceptions import ValidationError
 from rest_framework.exceptions import NotFound
 from django.shortcuts import get_object_or_404
-import environ
 from app.util import *
 from compose.util import *
+import environ
 env = environ.Env()
 environ.Env.read_env()
 
-
-def get_s3_config():
-    session = boto3.Session(
-        aws_access_key_id=env('S3_ACCESS_KEY_ID'),
-        aws_secret_access_key=env('S3_SECRET_ACCESS_KEY'),
-        region_name=env('S3_REGION_NAME')
-    )
-    s3_client = session.client(
-        's3',
-        endpoint_url=env('S3_ENDPOINT_URL'),
-        config=Config(signature_version='s3v4',
-        retries={'max_attempts': 10, 'mode': 'standard'})
-    )
-    return s3_client
 # Create your views here.
 
 
 class TemplateAPIView(APIView):
     permission_classes = (IsAuthenticated,)
     def post(self, request):
-        s3_client, s3_bucket, s3_endpoint = get_s3_config(), env('S3_BUCKET_NAME'), env('S3_ENDPOINT_URL')
         try:
             preview_image = request.FILES['preview_image']
-            background_image = request.FILES['background_image']
-        except KeyError:
-            raise ValidationError("Both 'preview_image' and 'background_image' are required.")
-        
-        preview_image_name = f"{str(uuid.uuid4())}_{preview_image.name}"
-        preview_image_cdn_url = s3_endpoint + '/mediafils/preview_images' + preview_image_name
-        
-        background_image_name = f"{str(uuid.uuid4())}_{background_image.name}"
-        bg_image_cdn_url = s3_endpoint + '/mediafils/background_images' + background_image_name
-        try:
-            # s3_client.upload_fileobj(preview_image, s3_bucket, 'mediafiles/preview_images/'+preview_image_name)
-            # s3_client.upload_fileobj(background_image, s3_bucket, 'mediafiles/background_images/'+background_image_name)
+            background_image = request.FILES['background_image']            
+            preview_image_cdn_url = '/mediafils/preview_images' + f"{str(uuid.uuid4())}_{preview_image.name}"
+            bg_image_cdn_url = '/mediafils/background_images' + f"{str(uuid.uuid4())}_{background_image.name}"
+            preview_image_cdn_url = s3_upload(self,preview_image, preview_image_cdn_url)
+            bg_image_cdn_url = s3_upload(self,background_image, bg_image_cdn_url)
             data=request.POST.dict()
-            data['brand'] = ['Brand 1', 'Brand 2']
-            data['application'] = ['Application 1', 'Application 2']
-            data['article_placements'] = [{'pos_index': 1, 'position_x': 50, 'position_y': 80, 'height': 300, 'width': 100, 'z_index':10}, {'pos_index': 2, 'position_x': 600, 'position_y': 300, 'height': 150, 'width': 300, 'z_index':10}, ]
-            brands = []
-            applications = []
-            article_placements = []
+            brands, applications, article_placements = [], [], []
             for brand in data['brand']:
                 brand_obj = Brand.objects.get(name=brand)
                 brands.append(brand_obj.pk)
@@ -77,40 +47,24 @@ class TemplateAPIView(APIView):
             serializer = ComposingTemplateSerializer(template)
             if serializer.is_valid():
                 return Response(created(self, serializer.data))
-
             return Response(error(self, serializer.errors))
         except KeyError as e:
             return Response(error(self, "All field are required: {}".format(str(e))))
-        except NoCredentialsError:
-            return Response(error(self, "No AWS credentials found"))
         except Exception as e:
             return Response(error(self, str(e)))
     def put(self, request):
         template_pk = request.POST.get('pk')
-        template = get_object_or_404(ComposingTemplate, pk=template_pk)
-        s3_client, s3_bucket, s3_endpoint = get_s3_config(), env('S3_BUCKET_NAME'), env('S3_ENDPOINT_URL')
-        
+        template = get_object_or_404(ComposingTemplate, pk=template_pk)        
         preview_image = request.FILES.get('preview_image')
         background_image = request.FILES.get('background_image')
-
         if preview_image:
-            preview_image_name = f"{str(uuid.uuid4())}_{preview_image.name}"
-            preview_image_cdn_url = s3_endpoint + '/mediafils/preview_images' + preview_image_name
-            try:
-                # s3_client.upload_fileobj(preview_image, s3_bucket, 'mediafiles/preview_images/' + preview_image_name)
-                template.preview_image_cdn_url = preview_image_cdn_url
-            except NoCredentialsError:
-                return Response(error(self, "No AWS credentials found"), status=400)
-
+            preview_image_cdn_url = '/mediafils/preview_images' + f"{str(uuid.uuid4())}_{preview_image.name}"
+            preview_image_cdn_url = s3_upload(self,preview_image, preview_image_cdn_url)
+            template.preview_image_cdn_url = preview_image_cdn_url
         if background_image:
-            background_image_name = f"{str(uuid.uuid4())}_{background_image.name}"
-            bg_image_cdn_url = s3_endpoint + '/mediafils/background_images' + background_image_name
-            try:
-                # s3_client.upload_fileobj(background_image, s3_bucket, 'mediafiles/background_images/' + background_image_name)
-                template.bg_image_cdn_url = bg_image_cdn_url
-            except NoCredentialsError:
-                return Response(error(self, "No AWS credentials found"), status=400)
-
+            bg_image_cdn_url = '/mediafils/background_images' + f"{str(uuid.uuid4())}_{background_image.name}"
+            bg_image_cdn_url = s3_upload(self,background_image, bg_image_cdn_url)
+            template.bg_image_cdn_url = bg_image_cdn_url
         data = request.POST.dict()
         template.name = data.get('name', template.name)
         template.resolution_width = data.get('resolution_width', template.resolution_width)
