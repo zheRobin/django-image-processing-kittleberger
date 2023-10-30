@@ -151,26 +151,30 @@ class ParseAPIView(APIView):
         return StreamingHttpResponse(stream_results(self, cursor, regex_product),content_type='application/json')
 
 class ImageBGRemovalAPIView(APIView):
-    def get(self, request):
-        document_id = request.GET.get('document_id')
+    def post(self, request):
+        document_id = request.data.get('document_id')
+        image_url = request.data.get('image_url')
         try:
             client = MongoClient(host=env('MONGO_DB_HOST'))
             db = client[env('MONGO_DB_NAME')]
             file_id = Document.objects.latest('id').file_id
             document = db[file_id].find_one({'_id': ObjectId(document_id)})
-        except (ConnectionFailure, ObjectDoesNotExist, InvalidId) as error:
-            if isinstance(error, ConnectionFailure):
+        except (ConnectionFailure, ObjectDoesNotExist, InvalidId) as err:
+            if isinstance(err, ConnectionFailure):
                 error_message = "MongoDB server is not available"
-            elif isinstance(error, ObjectDoesNotExist):
+            elif isinstance(err, ObjectDoesNotExist):
                 error_message = "No Document objects exist"
-            elif isinstance(error, InvalidId):
+            elif isinstance(err, InvalidId):
                 error_message = "Invalid ID"
             return Response(server_error(self, error_message))
         except Exception as e:
             return Response(server_error(self, str(e)))
         if document:
+            if image_url:
+                new_img = remove_background(self, image_url)
             result = {
-                "cdn_urls": document.get('CDN_URLS')
+                "cdn_urls": document.get('CDN_URLS'),
+                "new_img": new_img,
             }
             return Response(success(self, result))
         else:

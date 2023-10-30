@@ -1,11 +1,18 @@
-from rest_framework import status
+from django.conf import settings
 from lxml import etree as ET
 import json
+import cv2
+import requests
+from rembg import remove
+import numpy as np
+from PIL import Image
+from io import BytesIO
+import time
 ATTRIBUTES_XPATH = ET.XPath('.//attribute')
 LINKED_PRODUCTS_XPATH = ET.XPath('.//linked_products/product')
 LINKED_PRODUCT_ATTRIBUTES_XPATH = ET.XPath('.//attributes/attribute')
 VALUE_XPATH = ET.XPath('./value/text()')
-
+STATIC_URL = settings.STATIC_ROOT
 def convert(element):
     attributes = {attribute.get('ukey'): VALUE_XPATH(attribute) for attribute in ATTRIBUTES_XPATH(element)}
 
@@ -22,9 +29,7 @@ def convert(element):
 
     result.update(attributes)
     return result
-
-
-def stream_results(self, cursor, regex):    
+def stream_results(self, cursor, regex):
     for document in cursor:
         linked_products = document.get("linked_products", [])
         cdn_urls = document.get('CDN_URLS')
@@ -49,3 +54,11 @@ def stream_results(self, cursor, regex):
             }
             
             yield json.dumps(matched_product_data) + "\n"
+def remove_background(self, input_path):
+    response = requests.get(input_path)
+    input_img = response.content
+    output_path = STATIC_URL + '\\'+ str(time.time()) + '.png'
+    output_img = remove(input_img)
+    img = Image.open(BytesIO(output_img))
+    img.save(output_path, "PNG")
+    return output_path
