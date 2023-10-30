@@ -6,6 +6,7 @@ from rembg import remove
 from PIL import Image
 from io import BytesIO
 import time
+from app.util import *
 ATTRIBUTES_XPATH = ET.XPath('.//attribute')
 LINKED_PRODUCTS_XPATH = ET.XPath('.//linked_products/product')
 LINKED_PRODUCT_ATTRIBUTES_XPATH = ET.XPath('.//attributes/attribute')
@@ -55,8 +56,11 @@ def stream_results(self, cursor, regex):
 def remove_background(self, input_path):
     response = requests.get(input_path)
     input_img = response.content
-    output_path = STATIC_URL + '\\'+ str(int(time.time())) + '.png'
+    local_path = STATIC_URL + '\\'+ str(int(time.time())) + '.png'
+    output_path = '/mediafils/transparent_image/'+str(int(time.time())) + '.png'
     output_img = remove(input_img)
     img = Image.open(BytesIO(output_img))
-    img.save(output_path, "PNG")
-    return output_path
+    img.save(local_path, "PNG")
+    with open(local_path, 'rb') as f:
+        file_link = s3_upload(self, f, output_path)
+    return file_link
