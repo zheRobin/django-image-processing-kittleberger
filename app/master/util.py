@@ -7,6 +7,7 @@ from PIL import Image
 from io import BytesIO
 import time
 from app.util import *
+import os
 ATTRIBUTES_XPATH = ET.XPath('.//attribute')
 LINKED_PRODUCTS_XPATH = ET.XPath('.//linked_products/product')
 LINKED_PRODUCT_ATTRIBUTES_XPATH = ET.XPath('.//attributes/attribute')
@@ -37,7 +38,7 @@ def stream_results(self, cursor, regex):
             continue
 
         for product in linked_products:
-            # document_id = document.get('_id', '')
+            document_id = document.get('_id', '')
             product_key = product.get('mfact_key', '')
             product_name = product.get('name', '')
 
@@ -46,7 +47,7 @@ def stream_results(self, cursor, regex):
                 continue
 
             matched_product_data = {
-                'document_id' : str(document.get('_id')),
+                'document_id' : document_id,
                 'article number': product_key,
                 'name': product_name,
                 'cdn_urls': cdn_urls
@@ -56,8 +57,9 @@ def stream_results(self, cursor, regex):
 def remove_background(self, input_path):
     response = requests.get(input_path)
     input_img = response.content
-    local_path = STATIC_URL + '\\'+ str(int(time.time())) + '.png'
-    output_path = '/mediafils/transparent_image/'+str(int(time.time())) + '.png'
+    img_name =  str(int(time.time())) + '.png'
+    local_path = os.path.join(STATIC_URL,img_name)
+    output_path = '/mediafils/transparent_image/'+img_name
     output_img = remove(input_img)
     img = Image.open(BytesIO(output_img))
     img.save(local_path, "PNG")
