@@ -145,8 +145,10 @@ class ParseAPIView(APIView):
         if country:
             regex_country = re.compile(country, re.IGNORECASE)
             query.append({"1_COUNTRY": regex_country})
-
-        cursor = db[file_id].find({"$and": query})
+        if query:
+            cursor = db[file_id].find({"$and": query})
+        else:
+            cursor = db[file_id].find()
         
         return StreamingHttpResponse(stream_results(self, cursor, regex_product),content_type='application/json')
 
