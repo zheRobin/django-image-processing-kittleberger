@@ -169,14 +169,18 @@ class ImageBGRemovalAPIView(APIView):
             return Response(server_error(self, error_message))
         except Exception as e:
             return Response(server_error(self, str(e)))
-        if document:
+        if not document.get('TRANS_IMG'):
             if image_url:
                 trans_img = remove_background(self, image_url)
-                db[file_id].update_one({"_id": ObjectId(document_id)}, {"$set": {"new_img": trans_img}})
+                db[file_id].update_one({"_id": ObjectId(document_id)}, {"$set": {"TRANS_IMG": trans_img}})
             result = {
-                "cdn_urls": document.get('CDN_URLS'),
-                "trans_img": trans_img,
+                "CDN_URLS": document.get('CDN_URLS'),
+                "TRANS_IMG": trans_img,
             }
             return Response(success(self, result))
         else:
-            return Response(error(self, "Document not found"))
+            result = {
+                "CDN_URLS": document.get('CDN_URLS'),
+                "TRANS_IMG": document.get('TRANS_IMG'),
+            }
+            return Response(success(self, result))
