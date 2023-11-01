@@ -31,7 +31,19 @@ SECRET_KEY = 'django-insecure-4fm8z5rvx=_n*ew@cjt7mn2(^aum)t0j)7r@k68czzxszv+-91
 DEBUG = (env('DEBUG_MODE') == 'True')
 
 ALLOWED_HOSTS = ['18.184.193.127', 'localhost', '127.0.0.1', 'backend.dev.cg.kp.technology']
-CSRF_TRUSTED_ORIGINS = ['http://18.184.193.127', 'https://backend.dev.cg.kp.technology'] 
+CSRF_TRUSTED_ORIGINS = ['http://18.184.193.127', 'https://backend.dev.cg.kp.technology']
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -79,6 +91,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.postgres',
+    'corsheaders',
     'rest_framework',
     'accounts',
     'master',
@@ -93,6 +106,7 @@ MIDDLEWARE = [
     'app.middleware.RequestLogMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
