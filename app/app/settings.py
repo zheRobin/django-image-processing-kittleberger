@@ -30,7 +30,7 @@ SECRET_KEY = 'django-insecure-4fm8z5rvx=_n*ew@cjt7mn2(^aum)t0j)7r@k68czzxszv+-91
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = (env('DEBUG_MODE') == 'True')
 
-ALLOWED_HOSTS = ['18.184.193.127', 'localhost', '127.0.0.1', 'backend.dev.cg.kp.technology']
+ALLOWED_HOSTS = ['18.184.193.127', 'localhost', '127.0.0.1', 'backend.dev.cg.kp.technology','*']
 CSRF_TRUSTED_ORIGINS = ['http://18.184.193.127', 'https://backend.dev.cg.kp.technology']
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_HEADERS = [
