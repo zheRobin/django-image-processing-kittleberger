@@ -66,3 +66,15 @@ def remove_background(self, input_path):
     with open(local_path, 'rb') as f:
         file_link = s3_upload(self, f, output_path)
     return file_link
+def combine_images(self,background_url, product_url, product_height,
+                   product_width, left, top):
+    response = requests.get(background_url)
+    background = Image.open(BytesIO(response.content))
+    response = requests.get(product_url)
+    product = Image.open(BytesIO(response.content))
+    # product = product.resize((product_width))
+    img_name =  str(int(time.time())) + '.png'
+    local_path = os.path.join(STATIC_URL,img_name)
+    background.paste(product, (left, top), product)
+    background.save(local_path)
+    return local_path

@@ -186,3 +186,8 @@ class ImageBGRemovalAPIView(APIView):
                 "TRANS_IMG": document.get('TRANS_IMG'),
             }
             return Response(success(self, result))
+class ProductImageAPIView(APIView):
+    def post(self, request):
+        data = request.data
+        product = combine_images(self, data['background_url'], data['product_url'], data['product_height'], data['product_width'], data['left'], data['top'])
+        return Response(success(self, product))
