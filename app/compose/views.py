@@ -140,19 +140,33 @@ class ComposingArticleTemplateList(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class ComposingList(APIView):
+class ComposingAPIView(APIView):
     def get(self, request):
         products = Composing.objects.all()
         serializer = ComposingSerializer(products, many=True)
         return Response(serializer.data)
 
-    def post(self, request):
-        serializer = ComposingSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+    def post(self, request, format=None):
+        data = request.data
+        data['created_by_id'] = request.user.id
+        data['modified_by_id'] = request.user.id
+        articles_data = data.get('articles', [])
+        articles = []
+        for article_data in articles_data:
+            article_data['created_by_id'] = request.user.id
+            article_data['modified_by_id'] = request.user.id
+            try:
+                article = Article.objects.create(**article_data)
+                articles.append(article.pk)
+            except Exception as e:
+                return Response(error(self, str(e)))
+        try:
+            composing = Composing.objects.create(name = data['name'],template_id = data['template_id'], created_by_id = request.user.id, modified_by_id = request.user.id)
+            composing.articles.set(articles)
+        except Exception as e:
+            return Response(error(self, str(e)))
+        serializer = ComposingSerializer(composing)
+        return Response(created(self, serializer.data))
 class ComposingArticleTemplateDetail(APIView):
     def get_object(self, pk):
         try:

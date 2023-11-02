@@ -28,16 +28,18 @@ class ComposingTemplateSerializer(serializers.ModelSerializer):
             template.brand.add(brand_data)
         return template
 
-        
-class ComposingSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Composing
-        fields = '__all__'
-
 class ArticleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Article
         fields = '__all__'
+        
+class ComposingSerializer(serializers.ModelSerializer):
+    template = ComposingTemplateSerializer()
+    articles = ArticleSerializer(many=True)
+    class Meta:
+        model = Composing
+        fields = '__all__'
+
 
 class ComposingBlockListSerializer(serializers.ModelSerializer):
     class Meta:
