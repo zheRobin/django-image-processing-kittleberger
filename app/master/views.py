@@ -171,23 +171,31 @@ class ImageBGRemovalAPIView(APIView):
             return Response(server_error(self, error_message))
         except Exception as e:
             return Response(server_error(self, str(e)))
-        if not document.get('TRANS_IMG'):
-            if image_url:
-                trans_img = remove_background(self, image_url)
-                db[file_id].update_one({"_id": ObjectId(document_id)}, {"$set": {"TRANS_IMG": trans_img}})
+        if image_url:
+            trans_img = remove_background(self, image_url)
+            db[file_id].update_one({"_id": ObjectId(document_id)}, {"$set": {"TRANS_IMG": trans_img}})
             result = {
                 "CDN_URLS": document.get('CDN_URLS'),
                 "TRANS_IMG": trans_img,
             }
             return Response(success(self, result))
-        else:
-            result = {
-                "CDN_URLS": document.get('CDN_URLS'),
-                "TRANS_IMG": document.get('TRANS_IMG'),
-            }
-            return Response(success(self, result))
+        # if not document.get('TRANS_IMG'):
+        #     if image_url:
+        #         trans_img = remove_background(self, image_url)
+        #         db[file_id].update_one({"_id": ObjectId(document_id)}, {"$set": {"TRANS_IMG": trans_img}})
+        #     result = {
+        #         "CDN_URLS": document.get('CDN_URLS'),
+        #         "TRANS_IMG": trans_img,
+        #     }
+        #     return Response(success(self, result))
+        # else:
+        #     result = {
+        #         "CDN_URLS": document.get('CDN_URLS'),
+        #         "TRANS_IMG": document.get('TRANS_IMG'),
+        #     }
+        #     return Response(success(self, result))
 class ProductImageAPIView(APIView):
     def post(self, request):
         data = request.data
-        product = combine_images(self, data['background_url'], data['product_url'], data['product_height'], data['product_width'], data['left'], data['top'])
+        product = combine_images(data['background_url'], data['product_url'], data['product_height'], data['product_width'], data['left'], data['top'])
         return Response(success(self, product))
