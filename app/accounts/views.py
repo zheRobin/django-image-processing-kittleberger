@@ -15,28 +15,20 @@ class LoginAPIView(APIView):
     def post(self, request, format = None):
         email = request.data['email']
         password = request.data['password']
-
-        #find user using email
         user = User.objects.filter(email=email).first()
-
         if user is None:
-            raise AuthenticationFailed('User not found:)')
-            
+            raise AuthenticationFailed('User not found:)')            
         if not user.check_password(password):
             raise AuthenticationFailed('Invalid password')
-
         token = get_tokens_for_user(user)
         user.last_login = timezone.now()
         user.save()
         serializer = UserSerializer(user)
-        response = Response()
-        response.set_cookie(key="token", value=token["access_token"], httponly=True)
-        response.data = {
-            'user': serializer.data
+        response_data = {
+            'user': serializer.data,
+            'access_token': token["access_token"]
         }
-
-        #if password correct
-        return response
+        return Response(success(self, response_data))
 
     def get(self, request):
         token = request.GET.get('token')
@@ -56,13 +48,12 @@ class LoginAPIView(APIView):
         user.last_login = timezone.now()
         user.save()
         serializer = UserSerializer(user)
-        response = Response()
-        response.set_cookie(key="token", value=token["access_token"], httponly=True)
-        response.data = {
-            'user': serializer.data
+        response_data = {
+            'user': serializer.data,
+            'access_token': token["access_token"]
         }
 
-        return response
+        return Response(success(self, response_data))
 
 class LogoutView(APIView):
     permission_classes = (IsAuthenticated,)
