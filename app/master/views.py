@@ -32,7 +32,8 @@ class APIKeyAPIView(APIView):
     def post(self, request):
         try:
             user = User.objects.get(pk=request.user.pk)
-            ak_obj = APIKey.objects.create(user=user)
+            name = request.data['name']
+            ak_obj = APIKey.objects.create(user=user, name = name)
             return Response(success(self, ak_obj.apikey))
         except User.DoesNotExist:
             return Response(error(self, "Bad request"))
@@ -55,7 +56,8 @@ class APIKeyAPIView(APIView):
 class ParseAPIView(APIView):
     def post(self, request):
         api_key = request.POST.get('api_key')
-        get_object_or_404(APIKey, apikey=api_key)
+        api_key_instance = get_object_or_404(APIKey, apikey=api_key)
+        api_key_instance.save()
         file = request.FILES['file']
         filepath = default_storage.save(os.path.join('temp', file.name), ContentFile(file.read()))
 
@@ -177,21 +179,6 @@ class ImageBGRemovalAPIView(APIView):
                 "TRANS_IMG": trans_img,
             }
             return Response(success(self, result))
-        # if not document.get('TRANS_IMG'):
-        #     if image_url:
-        #         trans_img = remove_background(self, image_url)
-        #         db[file_id].update_one({"_id": ObjectId(document_id)}, {"$set": {"TRANS_IMG": trans_img}})
-        #     result = {
-        #         "CDN_URLS": document.get('CDN_URLS'),
-        #         "TRANS_IMG": trans_img,
-        #     }
-        #     return Response(success(self, result))
-        # else:
-        #     result = {
-        #         "CDN_URLS": document.get('CDN_URLS'),
-        #         "TRANS_IMG": document.get('TRANS_IMG'),
-        #     }
-        #     return Response(success(self, result))
 class ProductImageAPIView(APIView):
     def post(self, request):
         data = request.data
