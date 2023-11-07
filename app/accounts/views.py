@@ -128,7 +128,7 @@ class UserListAPIView(APIView):
                 serializer = UserSerializer(data = body)
                 if serializer.is_valid():
                     serializer.save()
-                    user = User.objects.get(email=body['email'])
+                    user = User.objects.get(id=body['id'])
                     token = get_tokens_for_user(user)
                     protocol = request.scheme
                     magic_link = f"{protocol}://{get_current_site(request).domain}/api/vi/user/login?token={token['jwt_token']}"
@@ -144,7 +144,7 @@ class UserListAPIView(APIView):
     def put(self, request):
         try:
             body = request.data
-            user = User.objects.get(email=body['email'])
+            user = User.objects.get(id=body['id'])
             serializer = UserSerializer(user, data=request.data, partial=True) 
             if serializer.is_valid():
                 serializer.save()

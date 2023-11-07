@@ -68,37 +68,35 @@ def remove_background(self, input_path):
     return file_link
 
 def get_shadow(img):
-    alpha = img.split()[-1]
-    alpha = alpha.filter(ImageFilter.MinFilter(3))
-    shape = Image.new('RGBA', alpha.size, (200, 200, 200, 230))
-    shape.putalpha(alpha)
-    segmented = Image.new('RGBA', (shape.size[0], shape.size[1]//4))
-    segmented.paste(shape, (0, -(shape.size[1]//4)*3))
-    shape = shape.resize((shape.size[0], shape.size[1]//4), Image.NEAREST)
-    cx, cy = -0.8, 0
-    c = 1 + shape.height / shape.width
-    px = (shape.width/20)*(img.height/img.width)
-    py = shape.height*0.08
-    shadow = segmented.transform(shape.size, method=Image.AFFINE,data=[c, cx, -px, cy, 1.1, -py], resample=Image.BICUBIC)
-    shadow = shadow.resize((int(shadow.size[0]*c), shadow.size[1]))
+    img_alpha = img.split()[-1].filter(ImageFilter.MinFilter(3))
+    img_shape = Image.new('RGBA', img_alpha.size)
+    img_shape.putalpha(img_alpha)
+    segmented = Image.new('RGBA', (img_shape.size[0], img_shape.size[1]//4))
+    segmented.paste(img_shape, (0, -(img_shape.size[1]//4)*3))
+    c = 1 + segmented.height / segmented.width
+    px = (segmented.width/20)*(img.height/img.width)
+    py = segmented.height*0.08
+
+    shadow = segmented.transform(segmented.size, method=Image.AFFINE, data=[c, -0.8, -px, 0, 1.1, -py], resample=Image.BICUBIC)
+    shadow = shadow.resize((int(shadow.width*c), shadow.height)).filter(ImageFilter.GaussianBlur(radius=3))
     return shadow
 
-def combine_images(background_url, product_url, product_height, product_width, left, top):
-    img_name =  str(int(time.time())) + '.png'
-    local_path = os.path.join(STATIC_URL,img_name)
-    response = requests.get(background_url)
-    background = Image.open(BytesIO(response.content))
-    response = requests.get(product_url)
-    product = Image.open(BytesIO(response.content))
-    product = product.resize((product_width,product_height))
-    shape = product.split()[-1]
-    shape = shape.filter(ImageFilter.MinFilter(3))
-    bbox = shape.getbbox()
-    product = product.crop(bbox)
-    shadow = get_shadow(product)
-    shadow_left = left - (shadow.size[0] - product.size[0])
-    shadow_top = top + (product.size[1] - shadow.size[1])
-    background.paste(shadow, (shadow_left, shadow_top), shadow)
-    background.paste(product, (left, top), product)
+def combine_images(background_url, articles):
+    img_name = str(int(time.time())) + '.png'
+    local_path = os.path.join(STATIC_URL, img_name)
+    background = Image.open(BytesIO(requests.get(background_url).content))
+    articles = sorted(articles, key=lambda x: x.get('z_index', 0))
+    for article in articles:
+        response = requests.get(article['url'])
+        img = Image.open(BytesIO(response.content)).resize((article['width'], article['height']))
+        product_bbox = img.split()[-1].filter(ImageFilter.MinFilter(3)).getbbox()
+        product = img.crop(product_bbox)
+        shadow = get_shadow(product)
+        shadow.putdata([(10, 10, 10, 10) if item[3] > 0 else item for item in shadow.getdata()])
+        shadow_left = article['left'] - (shadow.width - product.width)
+        shadow_top = article['top'] + (product.height - shadow.height)
+        background.paste(shadow, (shadow_left, shadow_top), shadow)
+        background.paste(product, (article['left'], article['top']), product)
     background.save(local_path)
+
     return local_path

@@ -9,7 +9,6 @@ import zipfile
 import json
 import os
 import re
-import pymongo.errors
 import time
 from master.models import *
 from lxml import etree
@@ -196,5 +195,5 @@ class ImageBGRemovalAPIView(APIView):
 class ProductImageAPIView(APIView):
     def post(self, request):
         data = request.data
-        product = combine_images(data['background_url'], data['product_url'], data['product_height'], data['product_width'], data['left'], data['top'])
+        product = combine_images(data['background_url'], data['articles'])
         return Response(success(self, product))
