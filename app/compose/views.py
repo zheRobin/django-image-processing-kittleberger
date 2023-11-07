@@ -12,6 +12,7 @@ from rest_framework.exceptions import NotFound
 from django.shortcuts import get_object_or_404
 from app.util import *
 from compose.util import *
+import json
 import environ
 env = environ.Env()
 environ.Env.read_env()
@@ -96,7 +97,11 @@ class TemplateAPIView(APIView):
     def get(self, request, format=None):
         templates = ComposingTemplate.objects.all()
         serializer = ComposingTemplateSerializer(templates, many=True)
-        return StreamingHttpResponse(event_stream(serializer.data), content_type="text/event-stream")
+        def event_stream():
+            for template in serializer.data:
+                if template:
+                    yield json.dumps(template)
+        return StreamingHttpResponse(event_stream(), content_type='text/event-stream')
 class ComposingTemplateDetail(APIView):
     def get(self, request, pk):
         template = get_object_or_404(ComposingTemplate, pk=pk)

@@ -38,7 +38,7 @@ def stream_results(self, cursor, regex):
             continue
 
         for product in linked_products:
-            document_id = document.get('_id', '')
+            document_id = str(document.get('_id', ''))
             product_key = product.get('mfact_key', '')
             product_name = product.get('name', '')
 

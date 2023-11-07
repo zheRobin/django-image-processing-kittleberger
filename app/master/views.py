@@ -149,7 +149,6 @@ class ParseAPIView(APIView):
             cursor = db[file_id].find({"$and": query})
         else:
             cursor = db[file_id].find()
-        
         return StreamingHttpResponse(stream_results(self, cursor, regex_product),content_type='application/json')
 
 class ImageBGRemovalAPIView(APIView):
