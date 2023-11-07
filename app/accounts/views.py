@@ -111,7 +111,7 @@ class UserListAPIView(APIView):
 
     def get(self, request):
         try:
-            users = User.objects.all()
+            users = User.objects.all().exclude(is_superuser=True)
             serializer = UserSerializer(users, many=True)
             return Response(success(self, serializer.data))
 
