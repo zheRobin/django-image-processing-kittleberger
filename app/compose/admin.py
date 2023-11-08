@@ -9,4 +9,4 @@ class ComposingAdmin(admin.ModelAdmin):
 admin.site.register(ComposingTemplate, ComposingTemplateAdmin)
 admin.site.register(ComposingArticleTemplate, ArticleTemplateAdmin)
 admin.site.register(Composing, ComposingAdmin)
-admin.site.register([Brand,Application,Article,ComposingBlockList])
+admin.site.register([Brand,Application,Article,ComposingBlockList,Country])
