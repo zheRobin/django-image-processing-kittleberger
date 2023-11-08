@@ -12,6 +12,11 @@ class Application(models.Model):
     index = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     def __str__(self):
         return self.name
+class Country(models.Model):
+    index = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    name = models.CharField(max_length=50, unique=True)
+    def __str__(self):
+        return self.name
 class ComposingArticleTemplate(models.Model):
     pos_index = models.IntegerField()
     position_x = models.IntegerField()

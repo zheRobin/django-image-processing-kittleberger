@@ -91,8 +91,8 @@ def get_s3_config():
     return s3_client
 def s3_upload(self, file, path):
     s3_client, s3_bucket, s3_endpoint = get_s3_config(), env('S3_BUCKET_NAME'), env('S3_ENDPOINT_URL')
-    try:
-        s3_client.upload_fileobj(file, s3_bucket, path)
-    except NoCredentialsError:
-        return Response(error(self, "No AWS credentials found"))
+    # try:
+    #     s3_client.upload_fileobj(file, s3_bucket, path)
+    # except NoCredentialsError:
+    #     return Response(error(self, "No AWS credentials found"))
     return s3_endpoint + path

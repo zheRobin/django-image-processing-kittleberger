@@ -32,10 +32,10 @@ class TemplateAPIView(APIView):
             bg_image_cdn_url = s3_upload(self,background_image, bg_image_cdn_url)
             data=request.POST.dict()
             brands, applications, article_placements = [], [], []
-            for brand in data['brand']:
+            for brand in data['brands']:
                 brand_obj = Brand.objects.get(name=brand)
                 brands.append(brand_obj.pk)
-            for app in data['application']:
+            for app in data['applications']:
                 app_obj = Application.objects.get(name=app)
                 applications.append(app_obj.pk)
             for placement in data['article_placements']:
@@ -98,9 +98,16 @@ class TemplateAPIView(APIView):
         templates = ComposingTemplate.objects.all()
         serializer = ComposingTemplateSerializer(templates, many=True)
         def event_stream():
+            chunk = []
             for template in serializer.data:
                 if template:
-                    yield json.dumps(template)
+                    chunk.append(template)
+                    if len(chunk) == 10:
+                        yield json.dumps(chunk) + '\n\n'
+                        chunk.clear()
+            if chunk:
+                yield json.dumps(chunk) + '\n\n'
+                chunk.clear()
         return StreamingHttpResponse(event_stream(), content_type='text/event-stream')
 class ComposingTemplateDetail(APIView):
     def get(self, request, pk):
@@ -244,6 +251,19 @@ class ApplicationAPIView(APIView):
 
     def post(self, request):
         serializer = ApplicationSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class CountryAPIView(APIView):
+    def get(self, request):
+        countries = Country.objects.all()
+        serializer = CountrySerializer(countries, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = CountrySerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)

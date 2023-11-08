@@ -1,15 +1,17 @@
 from rest_framework import serializers
 from .models import *
-
 class BrandSerializer(serializers.ModelSerializer):
     class Meta:
         model = Brand
         fields = '__all__'
-
 class ApplicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Application
         fields = '__all__'
+class CountrySerializer(serializers.ModelSerializer):
+    class Meta:
+      model = Country
+      fields = '__all__'
 class ComposingArticleTemplateSerializer(serializers.ModelSerializer):
     class Meta:
         model = ComposingArticleTemplate

@@ -8,6 +8,7 @@ urlpatterns = [
     path('', include(router.urls)),
     path('brand/', BrandAPIView.as_view()),
     path('application/', ApplicationAPIView.as_view()),
+    path('country/', CountryAPIView.as_view()),
     path('templates/', TemplateAPIView.as_view()),
     path('templates/<int:pk>/', ComposingTemplateDetail.as_view()),
     path('templates/filter/', ComposingTemplateFilter.as_view()),

@@ -6,13 +6,14 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import AuthenticationFailed
 from accounts.serializers import *
+from compose.serializers import *
 from django.utils import timezone
 import jwt
 from app.util import *
 from accounts.util import *
 
 class LoginAPIView(APIView):
-    def post(self, request, format = None):
+    def post(self, request, format=None):
         email = request.data['email']
         password = request.data['password']
         user = User.objects.filter(email=email).first()
@@ -20,13 +21,30 @@ class LoginAPIView(APIView):
             raise AuthenticationFailed('User not found:)')            
         if not user.check_password(password):
             raise AuthenticationFailed('Invalid password')
+        
         token = get_tokens_for_user(user)
         user.last_login = timezone.now()
         user.save()
-        serializer = UserSerializer(user)
+
+        # Using Django’s built-in serializers        
+        brands = Brand.objects.all()
+        applications = Application.objects.all()
+        countries = Country.objects.all()
+
+        brand_serializer = BrandSerializer(brands, many=True)
+        application_serializer = ApplicationSerializer(applications, many=True)
+        country_serializer = CountrySerializer(countries, many=True)
+        
+        user_serializer = UserSerializer(user)
+
         response_data = {
-            'user': serializer.data,
-            'access_token': token["access_token"]
+            'user': user_serializer.data,
+            'access_token': token["access_token"],
+            'page_data': {
+                'brands': brand_serializer.data,
+                'applications': application_serializer.data,
+                'countries': country_serializer.data,
+            }
         }
         return Response(success(self, response_data))
 
