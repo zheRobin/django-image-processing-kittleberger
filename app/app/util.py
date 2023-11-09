@@ -1,3 +1,4 @@
+from django.core.files.storage import default_storage
 from rest_framework import status
 import boto3
 from botocore.config import Config
@@ -96,3 +97,5 @@ def s3_upload(self, file, path):
     # except NoCredentialsError:
     #     return Response(error(self, "No AWS credentials found"))
     return s3_endpoint + path
+def handle_uploaded_file(f):
+    default_storage.save( f.name, f)

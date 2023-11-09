@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 import uuid
 from .models import *
 from .serializers import *
+from rest_framework.pagination import LimitOffsetPagination
 from django.core.exceptions import ValidationError
 from rest_framework.exceptions import NotFound
 from django.shortcuts import get_object_or_404
@@ -25,30 +26,30 @@ class TemplateAPIView(APIView):
     def post(self, request):
         try:
             preview_image = request.FILES['preview_image']
-            background_image = request.FILES['background_image']            
+            background_image = request.FILES['background_image']
             preview_image_cdn_url = '/mediafils/preview_images' + f"{str(uuid.uuid4())}_{preview_image.name}"
             bg_image_cdn_url = '/mediafils/background_images' + f"{str(uuid.uuid4())}_{background_image.name}"
             preview_image_cdn_url = s3_upload(self,preview_image, preview_image_cdn_url)
             bg_image_cdn_url = s3_upload(self,background_image, bg_image_cdn_url)
             data=request.POST.dict()
+            data['is_shadow'] = json.loads(data['is_shadow'].lower())
+            print(data['is_shadow'])
             brands, applications, article_placements = [], [], []
             for brand in data['brands']:
-                brand_obj = Brand.objects.get(name=brand)
+                brand_obj = Brand.objects.get(id=brand)
                 brands.append(brand_obj.pk)
             for app in data['applications']:
-                app_obj = Application.objects.get(name=app)
+                app_obj = Application.objects.get(id=app)
                 applications.append(app_obj.pk)
-            for placement in data['article_placements']:
-                placement_obj = ComposingArticleTemplate.objects.create(pos_index=placement['pos_index'], position_x = placement['position_x'], position_y = placement['position_y'], height = placement['height'], width = placement['width'], z_index = placement['z_index'],  created_by_id = request.user.pk, modified_by_id = request.user.pk)
+            for placement in json.loads(data['article_placements']):
+                placement_obj = ComposingArticleTemplate.objects.create( position_x = placement['position_x'], position_y = placement['position_y'], height = placement['height'], width = placement['width'], z_index = placement['z_index'],  created_by_id = request.user.pk, modified_by_id = request.user.pk)
                 article_placements.append(placement_obj.pk)
             template = ComposingTemplate.objects.create(name = data['name'], is_shadow = data['is_shadow'],resolution_width = data['resolution_width'], resolution_height=data['resolution_height'], created_by_id = request.user.pk, modified_by_id = request.user.pk, preview_image_cdn_url = preview_image_cdn_url, bg_image_cdn_url = bg_image_cdn_url)
             template.brand.set(brands)
             template.application.set(applications)
             template.article_placements.set(article_placements)
             serializer = ComposingTemplateSerializer(template)
-            if serializer.is_valid():
-                return Response(created(self, serializer.data))
-            return Response(error(self, serializer.errors))
+            return Response(created(self, serializer.data))
         except KeyError as e:
             return Response(error(self, "All field are required: {}".format(str(e))))
         except Exception as e:
@@ -117,6 +118,17 @@ class ComposingTemplateDetail(APIView):
 
 class ComposingTemplateFilter(APIView):
     def post(self, request, format=None):
+        limit = request.data.get('limit', None)
+        offset = request.data.get('offset', None)
+        if limit is None:
+            limit = 10
+        if offset is None:
+            offset = 0
+        try:
+            limit = int(limit)
+            offset = int(offset)
+        except ValueError:
+            return Response(error(self, 'Invalid limit/offset.'))
         brands = request.data.get('brand', [])
         applications = request.data.get('application', [])
         article_numbers = request.data.get('article_number', [])
@@ -135,10 +147,12 @@ class ComposingTemplateFilter(APIView):
         if applications:
             templates = templates.filter(application__pk__in=applications).distinct()
         templates = templates.annotate(count=Count('article_placements')).filter(article_filter)
-
-        serializer = ComposingTemplateSerializer(templates, many=True)
-
-        return Response(data=serializer.data, status=status.HTTP_200_OK)
+        paginator = LimitOffsetPagination()
+        paginator.default_limit = limit
+        paginator.max_limit = limit
+        context = paginator.paginate_queryset(templates, request)
+        serializer = ComposingTemplateSerializer(context, many=True)   
+        return paginator.get_paginated_response(serializer.data)
 class ComposingArticleTemplateList(APIView):
     def get(self, request):
         articles = ComposingArticleTemplate.objects.all()

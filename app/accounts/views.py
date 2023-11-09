@@ -29,11 +29,9 @@ class LoginAPIView(APIView):
         # Using Django’s built-in serializers        
         brands = Brand.objects.all()
         applications = Application.objects.all()
-        countries = Country.objects.all()
 
         brand_serializer = BrandSerializer(brands, many=True)
         application_serializer = ApplicationSerializer(applications, many=True)
-        country_serializer = CountrySerializer(countries, many=True)
         
         user_serializer = UserSerializer(user)
 
@@ -43,7 +41,6 @@ class LoginAPIView(APIView):
             'page_data': {
                 'brands': brand_serializer.data,
                 'applications': application_serializer.data,
-                'countries': country_serializer.data,
             }
         }
         return Response(success(self, response_data))
