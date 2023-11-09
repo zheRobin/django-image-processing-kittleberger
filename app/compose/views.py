@@ -33,12 +33,12 @@ class TemplateAPIView(APIView):
             bg_image_cdn_url = s3_upload(self,background_image, bg_image_cdn_url)
             data=request.POST.dict()
             data['is_shadow'] = json.loads(data['is_shadow'].lower())
-            print(data['is_shadow'])
             brands, applications, article_placements = [], [], []
-            for brand in data['brands']:
+            for brand in list(map(int, data['brands'].split(','))):
+                print(brand)
                 brand_obj = Brand.objects.get(id=brand)
                 brands.append(brand_obj.pk)
-            for app in data['applications']:
+            for app in list(map(int, data['applications'].split(','))):
                 app_obj = Application.objects.get(id=app)
                 applications.append(app_obj.pk)
             for placement in json.loads(data['article_placements']):
@@ -118,15 +118,9 @@ class ComposingTemplateDetail(APIView):
 
 class ComposingTemplateFilter(APIView):
     def post(self, request, format=None):
-        limit = request.data.get('limit', None)
-        offset = request.data.get('offset', None)
-        if limit is None:
-            limit = 10
-        if offset is None:
-            offset = 0
         try:
-            limit = int(limit)
-            offset = int(offset)
+            limit = int(request.data.get('limit', 10))
+            offset = int(request.data.get('offset', 0))
         except ValueError:
             return Response(error(self, 'Invalid limit/offset.'))
         brands = request.data.get('brand', [])
@@ -140,7 +134,7 @@ class ComposingTemplateFilter(APIView):
             else:
                 number = int(number)
                 article_filter |= Q(count=number)
-        templates = ComposingTemplate.objects.all()
+        templates = ComposingTemplate.objects.all().order_by('id')
         if brands:
             templates = templates.filter(brand__pk__in=brands).distinct()
 
@@ -149,7 +143,7 @@ class ComposingTemplateFilter(APIView):
         templates = templates.annotate(count=Count('article_placements')).filter(article_filter)
         paginator = LimitOffsetPagination()
         paginator.default_limit = limit
-        paginator.max_limit = limit
+        paginator.offset = offset
         context = paginator.paginate_queryset(templates, request)
         serializer = ComposingTemplateSerializer(context, many=True)   
         return paginator.get_paginated_response(serializer.data)
