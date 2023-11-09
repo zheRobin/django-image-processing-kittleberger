@@ -182,5 +182,5 @@ class ImageBGRemovalAPIView(APIView):
 class ProductImageAPIView(APIView):
     def post(self, request):
         data = request.data
-        product = combine_images(data['background_url'], data['articles'])
+        product = combine_images(self, data['background_url'], data['articles'])
         return Response(success(self, product))

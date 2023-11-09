@@ -83,19 +83,15 @@ def get_s3_config():
         aws_secret_access_key=env('S3_SECRET_ACCESS_KEY'),
         region_name=env('S3_REGION_NAME')
     )
-    s3_client = session.client(
-        's3',
-        endpoint_url=env('S3_ENDPOINT_URL'),
-        config=Config(signature_version='s3v4',
-        retries={'max_attempts': 10, 'mode': 'standard'})
-    )
+    s3_client = session.client('s3')
     return s3_client
+
 def s3_upload(self, file, path):
     s3_client, s3_bucket, s3_endpoint = get_s3_config(), env('S3_BUCKET_NAME'), env('S3_ENDPOINT_URL')
-    # try:
-    #     s3_client.upload_fileobj(file, s3_bucket, path)
-    # except NoCredentialsError:
-    #     return Response(error(self, "No AWS credentials found"))
+    try:
+        s3_client.upload_fileobj(file, s3_bucket, path, ExtraArgs={'ACL':'public-read'})
+    except NoCredentialsError:
+        return Response(error(self, "No AWS credentials found"))
     return s3_endpoint + path
 def handle_uploaded_file(f):
     default_storage.save( f.name, f)

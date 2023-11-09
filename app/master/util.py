@@ -77,9 +77,10 @@ def get_shadow(img):
     shadow = shadow.resize((int(shadow.width*c), shadow.height)).filter(ImageFilter.GaussianBlur(radius=3))
     return shadow
 
-def combine_images(background_url, articles):
+def combine_images(self,background_url, articles):
     img_name = str(int(time.time())) + '.png'
     local_path = os.path.join(STATIC_URL, img_name)
+    output_path = 'mediafils/transparent_image/'+img_name
     background = Image.open(BytesIO(requests.get(background_url).content))
     articles = sorted(articles, key=lambda x: x.get('z_index', 0))
     for article in articles:
@@ -94,5 +95,6 @@ def combine_images(background_url, articles):
         background.paste(shadow, (shadow_left, shadow_top), shadow)
         background.paste(product, (article['left'], article['top']), product)
     background.save(local_path)
-
-    return local_path
+    with open(local_path, 'rb') as f:
+        file_link = s3_upload(self, f, output_path)
+    return file_link
