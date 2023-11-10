@@ -145,8 +145,14 @@ class ComposingTemplateFilter(APIView):
         paginator.default_limit = limit
         paginator.offset = offset
         context = paginator.paginate_queryset(templates, request)
-        serializer = ComposingTemplateSerializer(context, many=True)   
-        return paginator.get_paginated_response(serializer.data)
+        products = Composing.objects.filter(template__in=context)
+        template_serializer = ComposingTemplateSerializer(context, many=True)
+        product_serializer = ComposingSerializer(products, many=True)
+        result = {
+            "templates":template_serializer.data,
+            "products":product_serializer.data
+        }  
+        return paginator.get_paginated_response(result)
 class ComposingArticleTemplateList(APIView):
     def get(self, request):
         articles = ComposingArticleTemplate.objects.all()
