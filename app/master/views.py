@@ -116,7 +116,7 @@ class ParseAPIView(APIView):
         if errors.__len__() > 0:
             return Response(created(self, errors))
         return Response(created(self, "Data inserted successfully"))
-
+class ProductFilterAPIView(APIView):
     def get(self, request, format = None):
         try:
             client = MongoClient(host=env('MONGO_DB_HOST'))
@@ -131,6 +131,7 @@ class ParseAPIView(APIView):
             return Response(server_error(self, "No Document objects exist"))        
         product = request.GET.get('product', None)
         country = request.GET.get('country', None)
+        page = int(request.GET.get('page', '1'))
         regex_product = None
         regex_country = None
         query = []
@@ -150,8 +151,7 @@ class ParseAPIView(APIView):
             cursor = db[file_id].find({"$and": query})
         else:
             cursor = db[file_id].find()
-        return StreamingHttpResponse(stream_results(self, cursor, regex_product),content_type='application/json')
-
+        return StreamingHttpResponse(stream_results(self, cursor, regex_product, page),content_type='application/json')
 class ImageBGRemovalAPIView(APIView):
     def post(self, request):
         document_id = request.data.get('document_id')
