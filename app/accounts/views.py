@@ -126,7 +126,7 @@ class UserListAPIView(APIView):
 
     def get(self, request):
         try:
-            users = User.objects.all().exclude(is_superuser=True)
+            users = User.objects.all().exclude(is_superuser=True).exclude(pk = request.user.pk)
             serializer = UserSerializer(users, many=True)
             return Response(success(self, serializer.data))
 
@@ -140,16 +140,13 @@ class UserListAPIView(APIView):
         try:
             body = request.data
             if 'password' in body and 'email' in body:
-                serializer = UserSerializer(data = body)
-                if serializer.is_valid():
-                    serializer.save()
-                    user = User.objects.get(id=body['id'])
-                    token = get_tokens_for_user(user)
-                    protocol = request.scheme
-                    magic_link = f"{protocol}://{get_current_site(request).domain}/api/vi/user/login?token={token['jwt_token']}"
-                    data = {'user': serializer.data,'magic_link':magic_link}
-                    return Response(created(self, data))
-                return Response(error(self,'Invalid Data'))                        
+                user = User.objects.create(email = body['email'], password = body['password'], username = body['username'])
+                token = get_tokens_for_user(user)
+                protocol = request.scheme
+                magic_link = f"{protocol}://{get_current_site(request).domain}/api/vi/user/login?token={token['jwt_token']}"
+                serializer = UserSerializer(user)
+                data = {'user': serializer.data,'magic_link':magic_link}
+                return Response(created(self, data))                  
             else:
                 return Response(error(self,'Password and Email are Required'))
 
@@ -158,13 +155,17 @@ class UserListAPIView(APIView):
 
     def put(self, request):
         try:
-            body = request.data
-            user = User.objects.get(id=body['id'])
-            serializer = UserSerializer(user, data=request.data, partial=True) 
-            if serializer.is_valid():
-                serializer.save()
-                return Response(updated(self, serializer.data))
-            return Response(error(self,'Invalid Data'))
+            data = request.data
+            user = User.objects.get(id=data['id'])
+            if 'email' in data and data['email'].strip():
+                user.email = data['email']
+            if 'username' in data and data['username'].strip():
+                user.username = data['username']
+            if 'password' in data and data['password'].strip():
+                user.set_password(data['password'])
+            user.save()
+            serializer = UserSerializer(user)
+            return Response(updated(self, serializer.data))
 
         except ObjectDoesNotExist:
             return Response(error(self, "User Not Found!"))
