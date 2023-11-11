@@ -5,9 +5,8 @@ import requests
 from rembg import remove
 from PIL import Image,ImageFilter
 from io import BytesIO
-import time
+import os, time, io
 from app.util import *
-import os
 ATTRIBUTES_XPATH = ET.XPath('.//attribute')
 LINKED_PRODUCTS_XPATH = ET.XPath('.//linked_products/product')
 LINKED_PRODUCT_ATTRIBUTES_XPATH = ET.XPath('.//attributes/attribute')
@@ -44,12 +43,8 @@ def stream_results(self, cursor, regex, page):
 
         if cdn_urls and linked_products:
             document_id = str(document.get('_id', ''))
-            chunk = [{'document_id' : document_id,
-                        'article number': product.get('mfact_key', ''),
-                        'name': product.get('name', ''),
-                        'cdn_urls': cdn_urls} for product in linked_products
-                    if regex is None or regex.search(product.get('mfact_key', '')) or 
-                    regex.search(product.get('name', ''))]
+            chunk = [{'document_id' : document_id,'article_number': product.get('mfact_key', ''),'name': product.get('name', ''),'cdn_urls': cdn_urls} 
+                     for product in linked_products if regex is None or regex.search(product.get('mfact_key', '')) or regex.search(product.get('name', ''))]
 
             while len(chunk) >= 10 and total_yield < limit:
                 yield json.dumps(chunk[:10]) + '\n\n'
@@ -71,6 +66,15 @@ def remove_background(self, input_path):
     with open(local_path, 'rb') as f:
         file_link = s3_upload(self, f, output_path)
     return file_link
+def save_img(self, img, size, type, output_path):
+    img = Image.open(img)
+    img_name =  str(int(time.time())) + '.png'
+    local_path = os.path.join(STATIC_URL,img_name)
+    output_img = img.resize(size)
+    output_img.save(local_path, type)
+    with open(local_path, 'rb') as f:
+        file_link = s3_upload(self, f, output_path)
+    return file_link
 
 def get_shadow(img):
     img_alpha = img.split()[-1].filter(ImageFilter.MinFilter(3))
@@ -86,22 +90,23 @@ def get_shadow(img):
     shadow = shadow.resize((int(shadow.width*c), shadow.height)).filter(ImageFilter.GaussianBlur(radius=3))
     return shadow
 
-def combine_images(self,background_url, articles):
+def combine_images(self,background_url, articles, template):
     img_name = str(int(time.time())) + '.png'
     local_path = os.path.join(STATIC_URL, img_name)
     output_path = 'mediafils/transparent_image/'+img_name
-    background = Image.open(BytesIO(requests.get(background_url).content))
+    background = Image.open(BytesIO(requests.get(background_url).content)).resize((template.resolution_width, template.resolution_height))
     articles = sorted(articles, key=lambda x: x.get('z_index', 0))
     for article in articles:
         response = requests.get(article['url'])
         img = Image.open(BytesIO(response.content)).resize((article['width'], article['height']))
         product_bbox = img.split()[-1].filter(ImageFilter.MinFilter(3)).getbbox()
         product = img.crop(product_bbox)
-        shadow = get_shadow(product)
-        shadow.putdata([(10, 10, 10, 10) if item[3] > 0 else item for item in shadow.getdata()])
-        shadow_left = article['left'] - (shadow.width - product.width)
-        shadow_top = article['top'] + (product.height - shadow.height)
-        background.paste(shadow, (shadow_left, shadow_top), shadow)
+        if template.is_shadow:
+            shadow = get_shadow(product)
+            shadow.putdata([(10, 10, 10, 10) if item[3] > 0 else item for item in shadow.getdata()])
+            shadow_left = article['left'] - (shadow.width - product.width)
+            shadow_top = article['top'] + (product.height - shadow.height)
+            background.paste(shadow, (shadow_left, shadow_top), shadow)
         background.paste(product, (article['left'], article['top']), product)
     background.save(local_path)
     with open(local_path, 'rb') as f:

@@ -12,7 +12,7 @@ from django.core.exceptions import ValidationError
 from rest_framework.exceptions import NotFound
 from django.shortcuts import get_object_or_404
 from app.util import *
-from compose.util import *
+from master.util import *
 import json
 import environ
 env = environ.Env()
@@ -25,17 +25,16 @@ class TemplateAPIView(APIView):
     permission_classes = (IsAuthenticated,)
     def post(self, request):
         try:
+            data=request.POST.dict()
             preview_image = request.FILES['preview_image']
             background_image = request.FILES['background_image']
             preview_image_cdn_url = '/mediafils/preview_images' + f"{str(uuid.uuid4())}_{preview_image.name}"
             bg_image_cdn_url = '/mediafils/background_images' + f"{str(uuid.uuid4())}_{background_image.name}"
             preview_image_cdn_url = s3_upload(self,preview_image, preview_image_cdn_url)
-            bg_image_cdn_url = s3_upload(self,background_image, bg_image_cdn_url)
-            data=request.POST.dict()
+            bg_image_cdn_url = save_img(self,background_image, (int(data['resolution_width']),int(data['resolution_height'])),data['type'],bg_image_cdn_url)
             data['is_shadow'] = json.loads(data['is_shadow'].lower())
             brands, applications, article_placements = [], [], []
             for brand in list(map(int, data['brands'].split(','))):
-                print(brand)
                 brand_obj = Brand.objects.get(id=brand)
                 brands.append(brand_obj.pk)
             for app in list(map(int, data['applications'].split(','))):
@@ -44,7 +43,7 @@ class TemplateAPIView(APIView):
             for placement in json.loads(data['article_placements']):
                 placement_obj = ComposingArticleTemplate.objects.create( position_x = placement['position_x'], position_y = placement['position_y'], height = placement['height'], width = placement['width'], z_index = placement['z_index'],  created_by_id = request.user.pk, modified_by_id = request.user.pk)
                 article_placements.append(placement_obj.pk)
-            template = ComposingTemplate.objects.create(name = data['name'], is_shadow = data['is_shadow'],resolution_width = data['resolution_width'], resolution_height=data['resolution_height'], created_by_id = request.user.pk, modified_by_id = request.user.pk, preview_image_cdn_url = preview_image_cdn_url, bg_image_cdn_url = bg_image_cdn_url)
+            template = ComposingTemplate.objects.create(name = data['name'], is_shadow = data['is_shadow'],resolution_width = data['resolution_width'], file_type = data['type'],resolution_height=data['resolution_height'], created_by_id = request.user.pk, modified_by_id = request.user.pk, preview_image_cdn_url = preview_image_cdn_url, bg_image_cdn_url = bg_image_cdn_url)
             template.brand.set(brands)
             template.application.set(applications)
             template.article_placements.set(article_placements)
