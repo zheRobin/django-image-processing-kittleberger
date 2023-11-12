@@ -164,6 +164,8 @@ class ImageBGRemovalAPIView(APIView):
             db = client[env('MONGO_DB_NAME')]
             file_id = Document.objects.latest('id').file_id
             document = db[file_id].find_one({'_id': ObjectId(document_id)})
+            if document is None:
+                return Response(server_error(self, 'Document does not exist'))
         except (ConnectionFailure, ObjectDoesNotExist, InvalidId) as err:
             if isinstance(err, ConnectionFailure):
                 error_message = "MongoDB server is not available"
@@ -174,7 +176,7 @@ class ImageBGRemovalAPIView(APIView):
             return Response(server_error(self, error_message))
         except Exception as e:
             return Response(server_error(self, str(e)))
-        if not document.get('TRANS_IMG'):
+        if document and not document.get('TRANS_IMG'):
             if image_url:
                 trans_img = remove_background(self, image_url)
                 db[file_id].update_one({"_id": ObjectId(document_id)}, {"$set": {"TRANS_IMG": trans_img}})

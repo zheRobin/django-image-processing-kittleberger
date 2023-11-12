@@ -53,36 +53,55 @@ class TemplateAPIView(APIView):
             return Response(error(self, "All field are required: {}".format(str(e))))
         except Exception as e:
             return Response(error(self, str(e)))
-    def put(self, request):
-        template_pk = request.POST.get('pk')
-        template = get_object_or_404(ComposingTemplate, pk=template_pk)        
-        preview_image = request.FILES.get('preview_image')
-        background_image = request.FILES.get('background_image')
-        if preview_image:
-            preview_image_cdn_url = '/mediafils/preview_images' + f"{str(uuid.uuid4())}_{preview_image.name}"
-            preview_image_cdn_url = s3_upload(self,preview_image, preview_image_cdn_url)
-            template.preview_image_cdn_url = preview_image_cdn_url
-        if background_image:
-            bg_image_cdn_url = '/mediafils/background_images' + f"{str(uuid.uuid4())}_{background_image.name}"
-            bg_image_cdn_url = s3_upload(self,background_image, bg_image_cdn_url)
-            template.bg_image_cdn_url = bg_image_cdn_url
-        data = request.POST.dict()
-        template.name = data.get('name', template.name)
-        template.resolution_width = data.get('resolution_width', template.resolution_width)
-        template.resolution_height = data.get('resolution_height', template.resolution_height)
-        template.is_shadow = data.get('is_shadow', template.is_shadow)
-        template.resolution_dpi = data.get('resolution_dpi', template.resolution_dpi)
-        template.file_type = data.get('file_type', template.file_type)
-        template.modified_by_id = request.user.pk
-
+    def put(self, request, pk):
         try:
+            data = request.data
+            template = ComposingTemplate.objects.get(pk=pk)
+
+            if 'preview_image' in request.FILES:
+                preview_image = request.FILES['preview_image']
+                preview_image_cdn_url = '/mediafils/preview_images' + f"{str(uuid.uuid4())}_{preview_image.name}"
+                template.preview_image_cdn_url = s3_upload(self, preview_image, preview_image_cdn_url)
+
+            if 'background_image' in request.FILES:
+                background_image = request.FILES['background_image']
+                bg_image_cdn_url = '/mediafils/background_images' + f"{str(uuid.uuid4())}_{background_image.name}"
+                template.bg_image_cdn_url = save_img(self, background_image, (int(data['resolution_width']),int(data['resolution_height'])),data['type'],bg_image_cdn_url)
+
+            if 'is_shadow' in data:
+                template.is_shadow = json.loads(data['is_shadow'].lower())
+
+            brand_ids, app_ids, placements_ids = [], [], []
+            if 'brands' in data:
+                for brand in list(map(int, data['brands'].split(','))):
+                    brand_obj = Brand.objects.get(id=brand)
+                    brand_ids.append(brand_obj.pk)
+                template.brand.set(brand_ids)
+
+            if 'applications' in data:
+                for app in list(map(int, data['applications'].split(','))):
+                    app_obj = Application.objects.get(id=app)
+                    app_ids.append(app_obj.pk)
+                template.application.set(app_ids)
+
+            if 'article_placements' in data:
+                for placement in json.loads(data['article_placements']):
+                    placement_obj = ComposingArticleTemplate.objects.create(position_x=placement['position_x'], position_y=placement['position_y'], height= placement['height'], width= placement['width'], z_index = placement['z_index'],  created_by_id=request.user.pk, modified_by_id=request.user.pk)
+                    placements_ids.append(placement_obj.pk)
+                template.article_placements.set(placements_ids)
+
             template.save()
+
+            serializer = ComposingTemplateSerializer(template)
+            return Response(created(self, serializer.data))
+        except ComposingTemplate.DoesNotExist:
+            return Response(error(self, "The playlist does not exist"))
+        except Brand.DoesNotExist:
+            return Response(error(self, "The brand does not exist"))
+        except Application.DoesNotExist:
+            return Response(error(self, "The applications does not exist"))
         except Exception as e:
-            return Response(error(self, str(e)), status=500)
-
-        serializer = ComposingTemplateSerializer(template)
-
-        return Response(serializer.data, status=200)
+            return Response(error(self, str(e)))
     def delete(self, request):
         template_pk = request.POST.get('pk')
         template = ComposingTemplate.objects.get(pk=template_pk)
