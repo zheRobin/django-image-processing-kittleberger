@@ -138,9 +138,11 @@ class UserListAPIView(APIView):
 
     def post(self, request, format=None):
         try:
-            body = request.data
-            if 'password' in body and 'email' in body:
-                user = User.objects.create(email = body['email'], password = body['password'], username = body['username'])
+            user_data = request.data
+            if 'password' in user_data and 'email' in user_data:
+                user = User.objects.create(email = user_data['email'], username = user_data['name'])
+                user.set_password(user_data['password'])
+                user.save()
                 token = get_tokens_for_user(user)
                 protocol = request.scheme
                 magic_link = f"{protocol}://{get_current_site(request).domain}/api/vi/user/login?token={token['jwt_token']}"
