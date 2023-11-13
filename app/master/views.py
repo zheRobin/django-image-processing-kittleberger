@@ -210,7 +210,7 @@ class ProductImageAPIView(APIView):
         try:
             data = self.validate_data(request.data)
             template = self.get_template(data['template_id'])
-            product = combine_images(self, data['background_url'], data['articles'], template)
+            product = combine_images(self, template, data['articles'])
             return Response(success(self, product), status=status.HTTP_200_OK)
 
         except ValidationError as error:

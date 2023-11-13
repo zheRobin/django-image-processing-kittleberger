@@ -90,25 +90,29 @@ def get_shadow(img):
     shadow = shadow.resize((int(shadow.width*c), shadow.height)).filter(ImageFilter.GaussianBlur(radius=3))
     return shadow
 
-def combine_images(self,background_url, articles, template):
+def combine_images(self,template, articles):
     img_name = str(int(time.time())) + '.png'
     local_path = os.path.join(STATIC_URL, img_name)
     output_path = 'mediafils/transparent_image/'+img_name
-    background = Image.open(BytesIO(requests.get(background_url).content)).resize((template.resolution_width, template.resolution_height))
+    background = Image.open(BytesIO(requests.get(template.bg_image_cdn_url).content)).resize((template.resolution_width, template.resolution_height))
     articles = sorted(articles, key=lambda x: x.get('z_index', 0))
     for article in articles:
-        response = requests.get(article['url'])
-        img = Image.open(BytesIO(response.content)).resize((article['width'], article['height']))
+        if template.is_shadow and article['transparent_cdn_url']:
+            response = requests.get(article['transparent_cdn_url'])
+        else:
+            response = requests.get(article['cdn_url'])
+        img = Image.open(BytesIO(response.content)).resize((int(article['width']*article['scaling']), int(article['height']*article['scaling'])))
         product_bbox = img.split()[-1].filter(ImageFilter.MinFilter(3)).getbbox()
         product = img.crop(product_bbox)
         if template.is_shadow:
             shadow = get_shadow(product)
             shadow.putdata([(10, 10, 10, 10) if item[3] > 0 else item for item in shadow.getdata()])
-            shadow_left = article['left'] - (shadow.width - product.width)
-            shadow_top = article['top'] + (product.height - shadow.height)
+            shadow_left = article['prod_left'] - (shadow.width - product.width)
+            shadow_top = article['prod_top'] + (product.height - shadow.height)
             background.paste(shadow, (shadow_left, shadow_top), shadow)
-        background.paste(product, (article['left'], article['top']), product)
+        background.paste(product, (article['prod_left'], article['prod_top']), product)
     background.save(local_path)
+    # thumbnail = background.thumbnail((300, int(300*template.resolution_height//template.resolution_width)), Image.ANTIALIAS)
     with open(local_path, 'rb') as f:
         file_link = s3_upload(self, f, output_path)
     return file_link

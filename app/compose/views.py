@@ -169,7 +169,7 @@ class ComposingTemplateFilter(APIView):
         result = {
             "templates":template_serializer.data,
             "products":product_serializer.data
-        }  
+        }
         return paginator.get_paginated_response(result)
 class ComposingArticleTemplateList(APIView):
     def get(self, request):
@@ -194,7 +194,9 @@ class ComposingAPIView(APIView):
         data = request.data
         data['created_by_id'] = request.user.id
         data['modified_by_id'] = request.user.id
+        template = ComposingTemplate.objects.get(pk=data['template_id'])
         articles_data = data.get('articles', [])
+        product = combine_images(self, template, articles_data)
         articles = []
         for article_data in articles_data:
             article_data['created_by_id'] = request.user.id
@@ -205,12 +207,12 @@ class ComposingAPIView(APIView):
             except Exception as e:
                 return Response(error(self, str(e)))
         try:
-            composing = Composing.objects.create(name = data['name'],template_id = data['template_id'], created_by_id = request.user.id, modified_by_id = request.user.id)
+            composing = Composing.objects.create(name = data['name'],template_id = data['template_id'],cdn_url = product, created_by_id = request.user.id, modified_by_id = request.user.id)
             composing.articles.set(articles)
         except Exception as e:
             return Response(error(self, str(e)))
-        serializer = ComposingSerializer(composing)
-        return Response(created(self, serializer.data))
+        
+        return Response(created(self, product))
 class ComposingArticleTemplateDetail(APIView):
     def get_object(self, pk):
         try:
