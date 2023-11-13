@@ -73,20 +73,33 @@ class TemplateAPIView(APIView):
 
             brand_ids, app_ids, placements_ids = [], [], []
             if 'brands' in data:
-                for brand in list(map(int, data['brands'].split(','))):
-                    brand_obj = Brand.objects.get(id=brand)
-                    brand_ids.append(brand_obj.pk)
+                for brand in data['brands'].split(','):
+                    if brand.isdigit():
+                        brand_obj = Brand.objects.get(id=int(brand))
+                        brand_ids.append(brand_obj.pk)
                 template.brand.set(brand_ids)
 
             if 'applications' in data:
-                for app in list(map(int, data['applications'].split(','))):
-                    app_obj = Application.objects.get(id=app)
-                    app_ids.append(app_obj.pk)
+                for app in data['applications'].split(','):
+                    if app.isdigit():
+                        app_obj = Application.objects.get(id=int(app))
+                        app_ids.append(app_obj.pk)
                 template.application.set(app_ids)
 
             if 'article_placements' in data:
                 for placement in json.loads(data['article_placements']):
-                    placement_obj = ComposingArticleTemplate.objects.create(position_x=placement['position_x'], position_y=placement['position_y'], height= placement['height'], width= placement['width'], z_index = placement['z_index'],  created_by_id=request.user.pk, modified_by_id=request.user.pk)
+                    if 'id' in placement and ComposingArticleTemplate.objects.filter(id=placement['id']).exists():
+                        placement_obj = ComposingArticleTemplate.objects.get(id=placement['id'])
+                        placement_obj.position_x = placement['position_x']
+                        placement_obj.position_y = placement['position_y']
+                        placement_obj.height = placement['height']
+                        placement_obj.width = placement['width']
+                        placement_obj.z_index = placement['z_index']
+                        placement_obj.created_by_id = request.user.pk
+                        placement_obj.modified_by_id = request.user.pk
+                        placement_obj.save()
+                    else:
+                        placement_obj = ComposingArticleTemplate.objects.create(position_x=placement['position_x'], position_y=placement['position_y'], height= placement['height'], width= placement['width'], z_index = placement['z_index'],  created_by_id=request.user.pk, modified_by_id=request.user.pk)
                     placements_ids.append(placement_obj.pk)
                 template.article_placements.set(placements_ids)
 

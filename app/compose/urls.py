@@ -10,7 +10,7 @@ urlpatterns = [
     path('application/', ApplicationAPIView.as_view()),
     path('country/', CountryAPIView.as_view()),
     path('templates/', TemplateAPIView.as_view()),
-    path('templates/<int:pk>/', ComposingTemplateDetail.as_view()),
+    path('templates/<int:pk>/', TemplateAPIView.as_view()),
     path('templates/filter', ComposingTemplateFilter.as_view()),
     path('article-template/', ComposingArticleTemplateList.as_view()),
     path('article/', ArticleAPIView.as_view()),
