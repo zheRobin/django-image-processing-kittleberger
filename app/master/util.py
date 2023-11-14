@@ -91,7 +91,8 @@ def get_shadow(img):
     shadow = shadow.resize((int(shadow.width*c), shadow.height)).filter(ImageFilter.GaussianBlur(radius=3))
     return shadow
 def save_product_image(base64_img):
-    img_name = str(int(time.time())) + '.png'
+    img_format = base64_img.split(';')[0].split('/')[1]
+    img_name = str(int(time.time())) + '.' + img_format
     local_path = os.path.join(STATIC_URL, img_name)
     output_path = '/mediafils/transparent_image/'+img_name
     img_data = base64.b64decode(base64_img.split(',')[1])
