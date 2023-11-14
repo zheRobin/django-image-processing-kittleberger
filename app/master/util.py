@@ -5,7 +5,7 @@ import requests
 from rembg import remove
 from PIL import Image,ImageFilter
 from io import BytesIO
-import os, time, io
+import os, time, base64
 from app.util import *
 ATTRIBUTES_XPATH = ET.XPath('.//attribute')
 LINKED_PRODUCTS_XPATH = ET.XPath('.//linked_products/product')
@@ -54,7 +54,11 @@ def stream_results(self, cursor, regex, page):
         yield json.dumps(chunk) + '\n\n'
     if not chunk and total_yield < limit:
         yield json.dumps([]) + '\n\n'
-def remove_background(self, input_path):
+def upload(in_path, out_path):
+    with open(in_path, 'rb') as f:
+        file_link = s3_upload( f, out_path)
+    return file_link
+def remove_background( input_path):
     response = requests.get(input_path)
     input_img = response.content
     img_name =  str(int(time.time())) + '.png'
@@ -63,19 +67,16 @@ def remove_background(self, input_path):
     output_img = remove(input_img)
     img = Image.open(BytesIO(output_img))
     img.save(local_path, "PNG")
-    with open(local_path, 'rb') as f:
-        file_link = s3_upload(self, f, output_path)
-    return file_link
-def save_img(self, img, size, type, output_path):
+    result = upload( local_path, output_path)
+    return result
+def resize_save_img( img, size, type, output_path, resolution_dpi):
     img = Image.open(img)
     img_name =  str(int(time.time())) + '.png'
     local_path = os.path.join(STATIC_URL,img_name)
     output_img = img.resize(size)
-    output_img.save(local_path, type)
-    with open(local_path, 'rb') as f:
-        file_link = s3_upload(self, f, output_path)
-    return file_link
-
+    output_img.save(local_path, type, dpi=(resolution_dpi, resolution_dpi))
+    result = upload( local_path, output_path)
+    return result
 def get_shadow(img):
     img_alpha = img.split()[-1].filter(ImageFilter.MinFilter(3))
     img_shape = Image.new('RGBA', img_alpha.size)
@@ -89,30 +90,36 @@ def get_shadow(img):
     shadow = segmented.transform(segmented.size, method=Image.AFFINE, data=[c, -0.8, -px, 0, 1.1, -py], resample=Image.BICUBIC)
     shadow = shadow.resize((int(shadow.width*c), shadow.height)).filter(ImageFilter.GaussianBlur(radius=3))
     return shadow
-
-def combine_images(self,template, articles):
+def save_product_image(base64_img):
     img_name = str(int(time.time())) + '.png'
     local_path = os.path.join(STATIC_URL, img_name)
-    output_path = 'mediafils/transparent_image/'+img_name
+    output_path = '/mediafils/transparent_image/'+img_name
+    img_data = base64.b64decode(base64_img.split(',')[1])
+    with open(local_path, 'wb') as f:
+        f.write(img_data)
+    result = upload( local_path, output_path)
+    return result
+def compose_render(template, articles):
     background = Image.open(BytesIO(requests.get(template.bg_image_cdn_url).content)).resize((template.resolution_width, template.resolution_height))
     articles = sorted(articles, key=lambda x: x.get('z_index', 0))
     for article in articles:
-        if template.is_shadow and article['transparent_cdn_url']:
-            response = requests.get(article['transparent_cdn_url'])
+        response = requests.get(article['article_link']).content
+        if article['is_transparent'] == "true":
+            media = Image.open(BytesIO(remove(response)))
         else:
-            response = requests.get(article['cdn_url'])
-        img = Image.open(BytesIO(response.content)).resize((int(article['width']*article['scaling']), int(article['height']*article['scaling'])))
+            media = Image.open(BytesIO(response))
+        img = media.resize((int(article['width']), int(article['height'])))
         product_bbox = img.split()[-1].filter(ImageFilter.MinFilter(3)).getbbox()
         product = img.crop(product_bbox)
         if template.is_shadow:
             shadow = get_shadow(product)
             shadow.putdata([(10, 10, 10, 10) if item[3] > 0 else item for item in shadow.getdata()])
-            shadow_left = article['prod_left'] - (shadow.width - product.width)
-            shadow_top = article['prod_top'] + (product.height - shadow.height)
+            shadow_left = article['left'] - (shadow.width - product.width)
+            shadow_top = article['top'] + (product.height - shadow.height)
             background.paste(shadow, (shadow_left, shadow_top), shadow)
-        background.paste(product, (article['prod_left'], article['prod_top']), product)
-    background.save(local_path)
-    # thumbnail = background.thumbnail((300, int(300*template.resolution_height//template.resolution_width)), Image.ANTIALIAS)
-    with open(local_path, 'rb') as f:
-        file_link = s3_upload(self, f, output_path)
-    return file_link
+        background.paste(product, (article['left'], article['top']), product)
+    buffered = BytesIO()
+    background.save(buffered, format=template.file_type, dpi=(template.resolution_dpi, template.resolution_dpi))
+    base64_img = base64.b64encode(buffered.getvalue())
+    img_data = f"data:image/{template.file_type.lower()};base64,{base64_img.decode('utf-8')}"
+    return img_data

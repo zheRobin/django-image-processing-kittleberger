@@ -43,7 +43,7 @@ class LoginAPIView(APIView):
                 'applications': application_serializer.data,
             }
         }
-        return Response(success(self, response_data))
+        return Response(success( response_data))
 
     def get(self, request):
         token = request.GET.get('token')
@@ -68,13 +68,13 @@ class LoginAPIView(APIView):
             'access_token': token["access_token"]
         }
 
-        return Response(success(self, response_data))
+        return Response(success( response_data))
 
 class LogoutView(APIView):
     permission_classes = (IsAuthenticated,)
     def post(self, request):
         request.user.auth_token.delete()
-        return Response(success(self, "Logout Success"))
+        return Response(success( "Logout Success"))
     
 class ChangePasswordAPIView(APIView):
     permission_classes = (IsAuthenticated,)
@@ -85,11 +85,11 @@ class ChangePasswordAPIView(APIView):
             if user.check_password(body['old_password']):
                 user.set_password(body['new_password'])
                 user.save()
-                return Response(success(self, "Password Changed"))
+                return Response(success( "Password Changed"))
             else:
-                return Response(error(self, "Invalid Old Password"))
+                return Response(error( "Invalid Old Password"))
         else:
-            return Response(error(self, "old_password and new_password are required"))
+            return Response(error( "old_password and new_password are required"))
 class UserDetailAPIView(APIView):
     permission_classes = (IsAuthenticated,)
 
@@ -97,11 +97,11 @@ class UserDetailAPIView(APIView):
         try:
             user = request.user
             serializer = UserSerializer(user)
-            return Response(success(self, serializer.data))
+            return Response(success( serializer.data))
         except ObjectDoesNotExist:
-            return Response(error(self,  "User does not exist."))
+            return Response(error(  "User does not exist."))
         except Exception as e:
-            return Response(server_error(self, str(e)))
+            return Response(server_error( str(e)))
 
     def put(self, request):
         try:
@@ -116,11 +116,11 @@ class UserDetailAPIView(APIView):
             
             user.save()
             serializer = UserSerializer(user)
-            return Response(success(self, serializer.data))
+            return Response(success( serializer.data))
         except ValidationError as e:
-            return Response(error(self,  e.detail))
+            return Response(error(  e.detail))
         except Exception as e:
-            return Response(server_error(self, str(e)))
+            return Response(server_error( str(e)))
 class UserListAPIView(APIView):
     permission_classes = (IsAuthenticated, IsAdminUser)
 
@@ -128,13 +128,13 @@ class UserListAPIView(APIView):
         try:
             users = User.objects.all().exclude(is_superuser=True).exclude(pk = request.user.pk)
             serializer = UserSerializer(users, many=True)
-            return Response(success(self, serializer.data))
+            return Response(success( serializer.data))
 
         except ObjectDoesNotExist:
-            return Response(error(self, "No User Found!"))
+            return Response(error( "No User Found!"))
 
         except Exception as e:
-            return Response(server_error(self, str(e)))  
+            return Response(server_error( str(e)))  
 
     def post(self, request, format=None):
         try:
@@ -150,10 +150,10 @@ class UserListAPIView(APIView):
                 data = {'user': serializer.data,'magic_link':magic_link}
                 return Response(created(self, data))                  
             else:
-                return Response(error(self,'Password and Email are Required'))
+                return Response(error('Password and Email are Required'))
 
         except Exception as e:
-            return Response(server_error(self, str(e)))
+            return Response(server_error( str(e)))
 
     def put(self, request):
         try:
@@ -170,7 +170,7 @@ class UserListAPIView(APIView):
             return Response(updated(self, serializer.data))
 
         except ObjectDoesNotExist:
-            return Response(error(self, "User Not Found!"))
+            return Response(error( "User Not Found!"))
 
         except Exception as e:
-            return Response(server_error(self, str(e)))
+            return Response(server_error( str(e)))

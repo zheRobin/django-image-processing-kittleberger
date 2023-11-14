@@ -30,8 +30,10 @@ class TemplateAPIView(APIView):
             background_image = request.FILES['background_image']
             preview_image_cdn_url = '/mediafils/preview_images' + f"{str(uuid.uuid4())}_{preview_image.name}"
             bg_image_cdn_url = '/mediafils/background_images' + f"{str(uuid.uuid4())}_{background_image.name}"
+            resolution_dpi_mapping = {"PNG": 72, "JPEG": 72, "TIFF": 300}
+            resolution_dpi = resolution_dpi_mapping.get(data['type'], 72)
             preview_image_cdn_url = s3_upload(self,preview_image, preview_image_cdn_url)
-            bg_image_cdn_url = save_img(self,background_image, (int(data['resolution_width']),int(data['resolution_height'])),data['type'],bg_image_cdn_url)
+            bg_image_cdn_url = resize_save_img(self,background_image, (int(data['resolution_width']),int(data['resolution_height'])),data['type'],bg_image_cdn_url,resolution_dpi)
             data['is_shadow'] = json.loads(data['is_shadow'].lower())
             brands, applications, article_placements = [], [], []
             for brand in list(map(int, data['brands'].split(','))):
@@ -41,22 +43,29 @@ class TemplateAPIView(APIView):
                 app_obj = Application.objects.get(id=app)
                 applications.append(app_obj.pk)
             for placement in json.loads(data['article_placements']):
-                placement_obj = ComposingArticleTemplate.objects.create( position_x = placement['position_x'], position_y = placement['position_y'], height = placement['height'], width = placement['width'], z_index = placement['z_index'],  created_by_id = request.user.pk, modified_by_id = request.user.pk)
+                placement_obj = ComposingArticleTemplate.objects.create(pos_index = placement['pos_index'], position_x = placement['position_x'], position_y = placement['position_y'], height = placement['height'], width = placement['width'], z_index = placement['z_index'],  created_by_id = request.user.pk, modified_by_id = request.user.pk)
                 article_placements.append(placement_obj.pk)
-            template = ComposingTemplate.objects.create(name = data['name'], is_shadow = data['is_shadow'],resolution_width = data['resolution_width'], file_type = data['type'],resolution_height=data['resolution_height'], created_by_id = request.user.pk, modified_by_id = request.user.pk, preview_image_cdn_url = preview_image_cdn_url, bg_image_cdn_url = bg_image_cdn_url)
+            template = ComposingTemplate.objects.create(name = data['name'], is_shadow = data['is_shadow'],resolution_width = data['resolution_width'],resolution_dpi = resolution_dpi, file_type = data['type'],resolution_height=data['resolution_height'], created_by_id = request.user.pk, modified_by_id = request.user.pk, preview_image_cdn_url = preview_image_cdn_url, bg_image_cdn_url = bg_image_cdn_url)
             template.brand.set(brands)
             template.application.set(applications)
             template.article_placements.set(article_placements)
             serializer = ComposingTemplateSerializer(template)
             return Response(created(self, serializer.data))
         except KeyError as e:
-            return Response(error(self, "All field are required: {}".format(str(e))))
+            return Response(error( "All field are required: {}".format(str(e))))
         except Exception as e:
-            return Response(error(self, str(e)))
+            return Response(error( str(e)))
     def put(self, request, pk):
         try:
             data = request.data
             template = ComposingTemplate.objects.get(pk=pk)
+            resolution_dpi_mapping = {"PNG": 72, "JPEG": 72, "TIFF": 300}
+            if 'name' in data:
+                template.name = data['name']
+            if 'type' in data:
+                template.file_type = data['type']
+                resolution_dpi = resolution_dpi_mapping.get(data['type'], 72)
+                template.resolution_dpi = resolution_dpi
 
             if 'preview_image' in request.FILES:
                 preview_image = request.FILES['preview_image']
@@ -66,7 +75,7 @@ class TemplateAPIView(APIView):
             if 'background_image' in request.FILES:
                 background_image = request.FILES['background_image']
                 bg_image_cdn_url = '/mediafils/background_images' + f"{str(uuid.uuid4())}_{background_image.name}"
-                template.bg_image_cdn_url = save_img(self, background_image, (int(data['resolution_width']),int(data['resolution_height'])),data['type'],bg_image_cdn_url)
+                template.bg_image_cdn_url = resize_save_img(self, background_image, (int(data['resolution_width']),int(data['resolution_height'])),data['type'],bg_image_cdn_url,resolution_dpi_mapping.get(data['type'], 72))
 
             if 'is_shadow' in data:
                 template.is_shadow = json.loads(data['is_shadow'].lower())
@@ -90,6 +99,7 @@ class TemplateAPIView(APIView):
                 for placement in json.loads(data['article_placements']):
                     if 'id' in placement and ComposingArticleTemplate.objects.filter(id=placement['id']).exists():
                         placement_obj = ComposingArticleTemplate.objects.get(id=placement['id'])
+                        placement_obj.pos_index = placement['pos_index']
                         placement_obj.position_x = placement['position_x']
                         placement_obj.position_y = placement['position_y']
                         placement_obj.height = placement['height']
@@ -99,7 +109,7 @@ class TemplateAPIView(APIView):
                         placement_obj.modified_by_id = request.user.pk
                         placement_obj.save()
                     else:
-                        placement_obj = ComposingArticleTemplate.objects.create(position_x=placement['position_x'], position_y=placement['position_y'], height= placement['height'], width= placement['width'], z_index = placement['z_index'],  created_by_id=request.user.pk, modified_by_id=request.user.pk)
+                        placement_obj = ComposingArticleTemplate.objects.create(pos_index = placement['pos_index'],position_x=placement['position_x'], position_y=placement['position_y'], height= placement['height'], width= placement['width'], z_index = placement['z_index'],  created_by_id=request.user.pk, modified_by_id=request.user.pk)
                     placements_ids.append(placement_obj.pk)
                 template.article_placements.set(placements_ids)
 
@@ -108,13 +118,13 @@ class TemplateAPIView(APIView):
             serializer = ComposingTemplateSerializer(template)
             return Response(created(self, serializer.data))
         except ComposingTemplate.DoesNotExist:
-            return Response(error(self, "The playlist does not exist"))
+            return Response(error( "The playlist does not exist"))
         except Brand.DoesNotExist:
-            return Response(error(self, "The brand does not exist"))
+            return Response(error( "The brand does not exist"))
         except Application.DoesNotExist:
-            return Response(error(self, "The applications does not exist"))
+            return Response(error( "The applications does not exist"))
         except Exception as e:
-            return Response(error(self, str(e)))
+            return Response(error( str(e)))
     def delete(self, request):
         template_pk = request.POST.get('pk')
         template = ComposingTemplate.objects.get(pk=template_pk)
@@ -153,7 +163,7 @@ class ComposingTemplateFilter(APIView):
             limit = int(request.data.get('limit', 10))
             offset = int(request.data.get('offset', 0))
         except ValueError:
-            return Response(error(self, 'Invalid limit/offset.'))
+            return Response(error( 'Invalid limit/offset.'))
         brands = request.data.get('brand', [])
         applications = request.data.get('application', [])
         article_numbers = request.data.get('article_number', [])
@@ -207,9 +217,8 @@ class ComposingAPIView(APIView):
         data = request.data
         data['created_by_id'] = request.user.id
         data['modified_by_id'] = request.user.id
-        template = ComposingTemplate.objects.get(pk=data['template_id'])
+        product = save_product_image(data['base64_img'])
         articles_data = data.get('articles', [])
-        product = combine_images(self, template, articles_data)
         articles = []
         for article_data in articles_data:
             article_data['created_by_id'] = request.user.id
@@ -218,12 +227,12 @@ class ComposingAPIView(APIView):
                 article = Article.objects.create(**article_data)
                 articles.append(article.pk)
             except Exception as e:
-                return Response(error(self, str(e)))
+                return Response(error( str(e)))
         try:
             composing = Composing.objects.create(name = data['name'],template_id = data['template_id'],cdn_url = product, created_by_id = request.user.id, modified_by_id = request.user.id)
             composing.articles.set(articles)
         except Exception as e:
-            return Response(error(self, str(e)))
+            return Response(error( str(e)))
         
         return Response(created(self, product))
 class ComposingArticleTemplateDetail(APIView):

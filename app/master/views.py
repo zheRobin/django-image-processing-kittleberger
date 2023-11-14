@@ -37,25 +37,25 @@ class APIKeyAPIView(APIView):
             user = User.objects.get(pk=request.user.pk)
             name = request.data['name']
             ak_obj = APIKey.objects.create(user=user, name = name)
-            return Response(success(self, ak_obj.apikey))
+            return Response(success( ak_obj.apikey))
         except User.DoesNotExist:
-            return Response(error(self, "Bad request"))
+            return Response(error( "Bad request"))
 
     def get(self, request):
         try:
             api_keys = APIKey.objects.all()
             data = APIKeySerializer(api_keys, many=True).data
-            return Response(success(self, data))
+            return Response(success( data))
         except APIKey.DoesNotExist:
-            return Response(error(self, "Bad request"))
+            return Response(error( "Bad request"))
 
     def delete(self, request, pk):
         try:
             apk_key = APIKey.objects.get(pk=pk)
             apk_key.delete()
-            return Response(success(self, str(apk_key.apikey) + ": Deleted"))
+            return Response(success( str(apk_key.apikey) + ": Deleted"))
         except APIKey.DoesNotExist:
-            return Response(error(self, "Bad request"))
+            return Response(error( "Bad request"))
 class ParseAPIView(APIView):
     def post(self, request):
         api_key = request.POST.get('api_key')
@@ -78,9 +78,9 @@ class ParseAPIView(APIView):
                             collection.insert_many(chunk)
                             chunk.clear()  
                     except json.JSONDecodeError:
-                        return Response(error(self, "Failed to decode JSON"))
+                        return Response(error( "Failed to decode JSON"))
                     except Exception as e:
-                        return Response(server_error(self, f"Unexpected error: {str(e)}"))
+                        return Response(server_error( f"Unexpected error: {str(e)}"))
                     finally:
                         elem.clear()
                         while elem.getprevious() is not None:
@@ -92,10 +92,10 @@ class ParseAPIView(APIView):
                 Document.objects.create(file_id=collection_name)
 
         except ConnectionFailure:
-            return Response(server_error(self, "Unable to connect to MongoDB"))
+            return Response(server_error( "Unable to connect to MongoDB"))
 
         if not zipfile.is_zipfile(filepath):
-            return Response(error(self, "Not a valid zip file"))
+            return Response(error( "Not a valid zip file"))
 
         with zipfile.ZipFile(filepath, 'r') as zip_ref:
             errors = []
@@ -111,7 +111,7 @@ class ParseAPIView(APIView):
                     except XMLSyntaxError:
                         errors.append(f"File {f} is not a well-formed XML document.")
                     except Exception as e:
-                        return Response(error(self, str(e)))
+                        return Response(error( str(e)))
 
         zip_ref.close()
         os.remove(filepath)
@@ -125,13 +125,13 @@ class ProductFilterAPIView(APIView):
             client = MongoClient(host=env('MONGO_DB_HOST'))
             db = client[env('MONGO_DB_NAME')]
         except ConnectionFailure:
-            return Response(server_error(self, "MongoDB server is not available"))
+            return Response(server_error( "MongoDB server is not available"))
         except Exception as e:
-            return Response(server_error(self, str(e)))
+            return Response(server_error( str(e)))
         try:
             file_id = Document.objects.latest('id').file_id
         except Document.DoesNotExist:
-            return Response(server_error(self, "No Document objects exist"))        
+            return Response(server_error( "No Document objects exist"))        
         product = request.GET.get('product', None)
         country = request.GET.get('country', None)
         page = int(request.GET.get('page', '1'))
@@ -165,7 +165,7 @@ class ImageBGRemovalAPIView(APIView):
             file_id = Document.objects.latest('id').file_id
             document = db[file_id].find_one({'_id': ObjectId(document_id)})
             if document is None:
-                return Response(server_error(self, 'Document does not exist'))
+                return Response(server_error( 'Document does not exist'))
         except (ConnectionFailure, ObjectDoesNotExist, InvalidId) as err:
             if isinstance(err, ConnectionFailure):
                 error_message = "MongoDB server is not available"
@@ -173,9 +173,9 @@ class ImageBGRemovalAPIView(APIView):
                 error_message = "No Document objects exist"
             elif isinstance(err, InvalidId):
                 error_message = "Invalid ID"
-            return Response(server_error(self, error_message))
+            return Response(server_error( error_message))
         except Exception as e:
-            return Response(server_error(self, str(e)))
+            return Response(server_error( str(e)))
         if document and not document.get('TRANS_IMG'):
             if image_url:
                 trans_img = remove_background(self, image_url)
@@ -184,38 +184,27 @@ class ImageBGRemovalAPIView(APIView):
                 "CDN_URLS": document.get('CDN_URLS'),
                 "TRANS_IMG": trans_img,
             }
-            return Response(success(self, result))
+            return Response(success( result))
         else:
             result = {
                 "CDN_URLS": document.get('CDN_URLS'),
                 "TRANS_IMG": document.get('TRANS_IMG'),
             }
-            return Response(success(self, result))
-class ProductImageAPIView(APIView):
+            return Response(success( result))        
+class ComposingGenAPIView(APIView):
+    def validate_data(self, data):
+        required_keys = ['template_id', 'articles']
+        if not all(key in data for key in required_keys):
+            raise ValidationError("Missing required field(s)")
+        return data
     def get_template(self, template_id):
         try:
             return ComposingTemplate.objects.get(pk=template_id)
         except ComposingTemplate.DoesNotExist:
             raise Http404("The requested template does not exist")
-
-    def validate_data(self, data):
-        required_keys = ['template_id', 'background_url', 'articles']
-
-        if not all(key in data for key in required_keys):
-            raise ValidationError("Missing required field(s)")
-
-        return data
-
     def post(self, request):
-        try:
-            data = self.validate_data(request.data)
-            template = self.get_template(data['template_id'])
-            product = combine_images(self, template, data['articles'])
-            return Response(success(self, product), status=status.HTTP_200_OK)
+        data = self.validate_data(request.data)
+        template = self.get_template(data['template_id'])
+        compose = compose_render(self, template, data['articles'])
 
-        except ValidationError as error:
-            return Response({'detail': str(error)}, status=status.HTTP_400_BAD_REQUEST)
-        except Http404 as error:
-            return Response({'detail': str(error)}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as error:
-            return Response({'detail': str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(success( compose))

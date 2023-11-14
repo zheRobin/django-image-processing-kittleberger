@@ -18,6 +18,7 @@ class Country(models.Model):
     def __str__(self):
         return self.name
 class ComposingArticleTemplate(models.Model):
+    pos_index = models.IntegerField()
     position_x = models.IntegerField()
     position_y = models.IntegerField()
     height = models.IntegerField()
@@ -47,16 +48,14 @@ class ComposingTemplate(models.Model):
     modified = models.DateTimeField(auto_now=True)
 
 class Article(models.Model):
+    pos_index = models.IntegerField()
     name = models.CharField(max_length=255)
     number = models.CharField(max_length=50)
     cdn_url = models.CharField(max_length=255)
-    transparent_cdn_url = models.CharField(max_length=255)
     scaling = models.IntegerField()
     alignment = models.CharField(max_length=20, default='center')
     height = models.IntegerField()
     width = models.IntegerField()
-    prod_top = models.IntegerField()
-    prod_left = models.IntegerField()
     z_index = models.IntegerField()
     created_by = models.ForeignKey(User, related_name='article_placement_created', on_delete=models.CASCADE)
     modified_by = models.ForeignKey(User, related_name='article_placement_modified', on_delete=models.CASCADE)

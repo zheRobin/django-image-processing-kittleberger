@@ -7,7 +7,7 @@ from rest_framework.response import Response
 import environ
 env = environ.Env()
 environ.Env.read_env()
-def success(self, data):
+def success( data):
     response = {
         "data": data,
         "status" : "success",
@@ -39,7 +39,7 @@ def deleted(self):
     }
     return response
 
-def error(self, data):
+def error(data):
     response = {
         "data": data,
         "status": "failed",
@@ -70,7 +70,7 @@ def not_found(self, message="Resource Not Found"):
         "code": status.HTTP_404_NOT_FOUND
     }
     return response
-def server_error(self, message="Unkown Error"):
+def server_error( message="Unkown Error"):
     response = {
         "data": {"error": message},
         "status": "failed",
@@ -86,12 +86,12 @@ def get_s3_config():
     s3_client = session.client('s3')
     return s3_client
 
-def s3_upload(self, file, path):
+def s3_upload(file, path):
     s3_client, s3_bucket, s3_endpoint = get_s3_config(), env('S3_BUCKET_NAME'), env('S3_ENDPOINT_URL')
     try:
         s3_client.upload_fileobj(file, s3_bucket, path, ExtraArgs={'ACL':'public-read'})
     except NoCredentialsError:
-        return Response(error(self, "No AWS credentials found"))
+        return Response(error("No AWS credentials found"))
     return s3_endpoint + path
 def handle_uploaded_file(f):
     default_storage.save( f.name, f)
