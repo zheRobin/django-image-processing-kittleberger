@@ -162,10 +162,8 @@ class SaveMediaAPIView(APIView):
         if remove_bg == 1:
             result = remove_background(image_url)
         else:
-            result = save_origin(image_url)
-        protocol = request.scheme
-        link = f"{protocol}://{get_current_site(request).domain}/static/{result}"    
-        return Response(success(link))        
+            result = save_origin(image_url) 
+        return Response(success(result))        
 class ComposingGenAPIView(APIView):
     def validate_data(self, data):
         required_keys = ['template_id', 'articles']
