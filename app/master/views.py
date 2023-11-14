@@ -121,76 +121,47 @@ class ParseAPIView(APIView):
         return Response(created(self, "Data inserted successfully"))
 class ProductFilterAPIView(APIView):
     def get(self, request, format = None):
-        try:
-            client = MongoClient(host=env('MONGO_DB_HOST'))
-            db = client[env('MONGO_DB_NAME')]
-        except ConnectionFailure:
-            return Response(server_error( "MongoDB server is not available"))
-        except Exception as e:
-            return Response(server_error( str(e)))
-        try:
-            file_id = Document.objects.latest('id').file_id
-        except Document.DoesNotExist:
-            return Response(server_error( "No Document objects exist"))        
+        client = MongoClient(host=os.getenv('MONGO_DB_HOST'))
+        db = client[os.getenv('MONGO_DB_NAME')]
+        file_id = Document.objects.latest('id').file_id
         product = request.GET.get('product', None)
         country = request.GET.get('country', None)
         page = int(request.GET.get('page', '1'))
-        regex_product = None
-        regex_country = None
+        regex_product = re.compile(product, re.IGNORECASE) if product else None
+        regex_country = re.compile(country, re.IGNORECASE) if country else None
         query = []
-        if product:
-            regex_product = re.compile(product, re.IGNORECASE)
-            product_query = {
-                "$or": [
-                    {"linked_products.mfact_key": regex_product},
-                    {"linked_products.name": regex_product}
-                ]
-            }
-            query.append(product_query)
-        if country:
-            regex_country = re.compile(country, re.IGNORECASE)
+        results = []
+        iter_limit = 30
+        if regex_product:
+            query.append({"$or": [{"linked_products.mfact_key": regex_product}, {"linked_products.name": regex_product}]})
+
+        if regex_country:
             query.append({"1_COUNTRY": regex_country})
-        if query:
-            cursor = db[file_id].find({"$and": query})
-        else:
-            cursor = db[file_id].find()
-        return StreamingHttpResponse(stream_results(self, cursor, regex_product, page),content_type='application/json')
+
+        cursor = db[file_id].find({"$and": query}).skip((page-1) * iter_limit) if query else db[file_id].find().skip((page-1) * iter_limit)
+        for document in cursor:
+            cdn_urls = document.get('CDN_URLS')
+            linked_products = document.get("linked_products", [])
+            if cdn_urls and linked_products:
+                document_id = str(document.get('_id', ''))
+                for product in linked_products:
+                    if regex_product is None or regex_product.search(product.get('mfact_key', '')) or regex_product.search(product.get('name', '')):
+                        results.append({'document_id': document_id, 'article_number': product.get('mfact_key', ''), 'name': product.get('name', ''), 'cdn_urls': cdn_urls})
+                    if len(results) == iter_limit:
+                        break
+            if len(results) == iter_limit:
+                break
+        result = {
+            "current_page": page,
+            "count": len(results),
+            "products": results
+        }
+        return Response(success(result))
 class ImageBGRemovalAPIView(APIView):
     def post(self, request):
-        document_id = request.data.get('document_id')
         image_url = request.data.get('image_url')
-        try:
-            client = MongoClient(host=env('MONGO_DB_HOST'))
-            db = client[env('MONGO_DB_NAME')]
-            file_id = Document.objects.latest('id').file_id
-            document = db[file_id].find_one({'_id': ObjectId(document_id)})
-            if document is None:
-                return Response(server_error( 'Document does not exist'))
-        except (ConnectionFailure, ObjectDoesNotExist, InvalidId) as err:
-            if isinstance(err, ConnectionFailure):
-                error_message = "MongoDB server is not available"
-            elif isinstance(err, ObjectDoesNotExist):
-                error_message = "No Document objects exist"
-            elif isinstance(err, InvalidId):
-                error_message = "Invalid ID"
-            return Response(server_error( error_message))
-        except Exception as e:
-            return Response(server_error( str(e)))
-        if document and not document.get('TRANS_IMG'):
-            if image_url:
-                trans_img = remove_background(self, image_url)
-                db[file_id].update_one({"_id": ObjectId(document_id)}, {"$set": {"TRANS_IMG": trans_img}})
-            result = {
-                "CDN_URLS": document.get('CDN_URLS'),
-                "TRANS_IMG": trans_img,
-            }
-            return Response(success( result))
-        else:
-            result = {
-                "CDN_URLS": document.get('CDN_URLS'),
-                "TRANS_IMG": document.get('TRANS_IMG'),
-            }
-            return Response(success( result))        
+        trans_img = remove_background(image_url)    
+        return Response(success(trans_img))        
 class ComposingGenAPIView(APIView):
     def validate_data(self, data):
         required_keys = ['template_id', 'articles']
@@ -207,4 +178,4 @@ class ComposingGenAPIView(APIView):
         template = self.get_template(data['template_id'])
         compose = compose_render(self, template, data['articles'])
 
-        return Response(success( compose))
+        return Response(success(compose))

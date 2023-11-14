@@ -7,7 +7,7 @@ from rest_framework.response import Response
 import environ
 env = environ.Env()
 environ.Env.read_env()
-def success( data):
+def success(data):
     response = {
         "data": data,
         "status" : "success",

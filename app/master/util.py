@@ -28,47 +28,21 @@ def convert(element):
 
     result.update(attributes)
     return result
-def stream_results(self, cursor, regex, page):
-    total_yield = 0
-    limit = 100
-    skip = limit * (page-1) * 10
-    chunk = []
-    cursor.skip(skip)
-    for document in cursor:
-        if total_yield >= limit:
-            break
-
-        cdn_urls = document.get('CDN_URLS')
-        linked_products = document.get("linked_products", [])
-
-        if cdn_urls and linked_products:
-            document_id = str(document.get('_id', ''))
-            chunk = [{'document_id' : document_id,'article_number': product.get('mfact_key', ''),'name': product.get('name', ''),'cdn_urls': cdn_urls} 
-                     for product in linked_products if regex is None or regex.search(product.get('mfact_key', '')) or regex.search(product.get('name', ''))]
-
-            while len(chunk) >= 10 and total_yield < limit:
-                yield json.dumps(chunk[:10]) + '\n\n'
-                total_yield += 1
-                chunk = chunk[10:]
-    if chunk and total_yield < limit:
-        yield json.dumps(chunk) + '\n\n'
-    if not chunk and total_yield < limit:
-        yield json.dumps([]) + '\n\n'
 def upload(in_path, out_path):
     with open(in_path, 'rb') as f:
         file_link = s3_upload( f, out_path)
     return file_link
-def remove_background( input_path):
+def remove_background(input_path):
     response = requests.get(input_path)
     input_img = response.content
     img_name =  str(int(time.time())) + '.png'
     local_path = os.path.join(STATIC_URL,img_name)
-    output_path = '/mediafils/transparent_image/'+img_name
+    # output_path = '/mediafils/transparent_image/'+img_name
     output_img = remove(input_img)
     img = Image.open(BytesIO(output_img))
     img.save(local_path, "PNG")
-    result = upload( local_path, output_path)
-    return result
+    # result = upload( local_path, output_path)
+    return local_path
 def resize_save_img( img, size, type, output_path, resolution_dpi):
     img = Image.open(img)
     img_name =  str(int(time.time())) + '.png'
