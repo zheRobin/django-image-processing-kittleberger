@@ -20,9 +20,7 @@ from .models import APIKey
 from .serializers import *
 from compose.serializers import *
 from accounts.models import User
-from bson.objectid import ObjectId
-from bson.errors import InvalidId
-from django.core.exceptions import ObjectDoesNotExist
+from django.contrib.sites.shortcuts import get_current_site
 from pymongo.errors import ConnectionFailure
 from django.http import Http404
 from django.core.exceptions import ValidationError
@@ -157,11 +155,17 @@ class ProductFilterAPIView(APIView):
             "products": results
         }
         return Response(success(result))
-class ImageBGRemovalAPIView(APIView):
+class SaveMediaAPIView(APIView):
     def post(self, request):
         image_url = request.data.get('image_url')
-        trans_img = remove_background(image_url)    
-        return Response(success(trans_img))        
+        remove_bg = request.data.get('remove_bg')
+        if remove_bg == 1:
+            result = remove_background(image_url)
+        else:
+            result = save_origin(image_url)
+        protocol = request.scheme
+        link = f"{protocol}://{get_current_site(request).domain}/static/{result}"    
+        return Response(success(link))        
 class ComposingGenAPIView(APIView):
     def validate_data(self, data):
         required_keys = ['template_id', 'articles']

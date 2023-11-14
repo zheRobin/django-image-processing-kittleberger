@@ -37,12 +37,18 @@ def remove_background(input_path):
     input_img = response.content
     img_name =  str(int(time.time())) + '.png'
     local_path = os.path.join(STATIC_URL,img_name)
-    # output_path = '/mediafils/transparent_image/'+img_name
     output_img = remove(input_img)
     img = Image.open(BytesIO(output_img))
     img.save(local_path, "PNG")
-    # result = upload( local_path, output_path)
-    return local_path
+    return img_name
+def save_origin(input_path):
+    response = requests.get(input_path)
+    input_img = response.content
+    img_name =  str(int(time.time())) + '.png'
+    local_path = os.path.join(STATIC_URL,img_name)
+    img = Image.open(BytesIO(input_img))
+    img.save(local_path, "PNG")
+    return img_name
 def resize_save_img( img, size, type, output_path, resolution_dpi):
     img = Image.open(img)
     img_name =  str(int(time.time())) + '.png'
