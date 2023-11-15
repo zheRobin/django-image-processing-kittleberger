@@ -178,6 +178,6 @@ class ComposingGenAPIView(APIView):
     def post(self, request):
         data = self.validate_data(request.data)
         template = self.get_template(data['template_id'])
-        compose = compose_render(self, template, data['articles'])
+        compose = compose_render(template, data['articles'])
 
         return Response(success(compose))
