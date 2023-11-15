@@ -26,13 +26,16 @@ class TemplateAPIView(APIView):
     def post(self, request):
         try:
             data=request.POST.dict()
-            preview_image = request.FILES['preview_image']
+            if 'preview_image' in request.FILES:
+                preview_image = request.FILES['preview_image']
+                preview_image_cdn_url = '/mediafils/preview_images' + f"{str(uuid.uuid4())}_{preview_image.name}"
+                preview_image_cdn_url = s3_upload(self, preview_image, preview_image_cdn_url)
+            else:
+                preview_image_cdn_url = ""
             background_image = request.FILES['background_image']
-            preview_image_cdn_url = '/mediafils/preview_images' + f"{str(uuid.uuid4())}_{preview_image.name}"
             bg_image_cdn_url = '/mediafils/background_images' + f"{str(uuid.uuid4())}_{background_image.name}"
             resolution_dpi_mapping = {"PNG": 72, "JPEG": 72, "TIFF": 300}
             resolution_dpi = resolution_dpi_mapping.get(data['type'], 72)
-            preview_image_cdn_url = s3_upload(self,preview_image, preview_image_cdn_url)
             bg_image_cdn_url = resize_save_img(self,background_image, (int(data['resolution_width']),int(data['resolution_height'])),data['type'],bg_image_cdn_url,resolution_dpi)
             data['is_shadow'] = json.loads(data['is_shadow'].lower())
             brands, applications, article_placements = [], [], []

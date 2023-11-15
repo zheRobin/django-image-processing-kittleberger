@@ -89,6 +89,9 @@ def compose_render(template, articles):
             media = Image.open(BytesIO(remove(response)))
         else:
             media = Image.open(BytesIO(response))
+        if article['width'] == 0 or article['height'] == 0:
+            article['width'] = media.width
+            article['height'] = media.height
         img = media.resize((int(article['width']), int(article['height'])))
         product_bbox = img.split()[-1].filter(ImageFilter.MinFilter(3)).getbbox()
         product = img.crop(product_bbox)
@@ -97,8 +100,8 @@ def compose_render(template, articles):
             shadow.putdata([(10, 10, 10, 10) if item[3] > 0 else item for item in shadow.getdata()])
             shadow_left = article['left'] - (shadow.width - product.width)
             shadow_top = article['top'] + (product.height - shadow.height)
-            background.paste(shadow, (shadow_left, shadow_top), shadow)
-        background.paste(product, (article['left'], article['top']), product)
+            background.paste(shadow, (int(shadow_left), int(shadow_top)), shadow)
+        background.paste(product, (int(article['left']), int(article['top'])), product)
     buffered = BytesIO()
     background.save(buffered, format=template.file_type, dpi=(template.resolution_dpi, template.resolution_dpi))
     base64_img = base64.b64encode(buffered.getvalue())
