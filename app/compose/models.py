@@ -52,6 +52,7 @@ class Article(models.Model):
     name = models.CharField(max_length=255)
     number = models.CharField(max_length=50)
     cdn_url = models.CharField(max_length=255)
+    is_transparent = models.BooleanField(default=False)
     scaling = models.IntegerField()
     alignment = models.CharField(max_length=20, default='center')
     height = models.IntegerField()

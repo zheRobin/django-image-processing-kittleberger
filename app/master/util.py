@@ -86,13 +86,16 @@ def save_product_image(base64_img):
     result = upload( local_path, output_path)
     return result
 def compose_render(template, articles):
-    background = Image.open(BytesIO(requests.get(template.bg_image_cdn_url).content)).resize((template.resolution_width, template.resolution_height))
+    background = Image.open(BytesIO(requests.get(template.bg_image_cdn_url).content))
     articles = sorted(articles, key=lambda x: x.get('z_index', 0))
     for article in articles:
+        print(article['z_index'])
         response = requests.get(article['article_link']).content
-        if article['is_transparent'] == "true":
+        if article['is_transparent'] == "true" or  article['is_transparent']:
+            print(article['is_transparent'])
             media = Image.open(BytesIO(remove(response)))
         else:
+            print(article['is_transparent'])
             media = Image.open(BytesIO(response))
         if article['width'] == 0 or article['height'] == 0:
             article['width'] = media.width
@@ -106,7 +109,11 @@ def compose_render(template, articles):
             shadow_left = article['left'] - (shadow.width - product.width)
             shadow_top = article['top'] + (product.height - shadow.height)
             background.paste(shadow, (int(shadow_left), int(shadow_top)), shadow)
-        background.paste(product, (int(article['left']), int(article['top'])), product)
+        if product.mode == "RGBA":
+            mask = product.split()[3]
+            background.paste(product, (int(article['left']), int(article['top'])), mask)
+        else:
+            background.paste(product, (int(article['left']), int(article['top'])))
     buffered = BytesIO()
     background.save(buffered, format=template.file_type, dpi=(template.resolution_dpi, template.resolution_dpi))
     base64_img = base64.b64encode(buffered.getvalue())
