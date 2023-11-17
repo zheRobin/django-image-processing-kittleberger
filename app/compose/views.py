@@ -28,12 +28,12 @@ class TemplateAPIView(APIView):
             data=request.POST.dict()
             if 'preview_image' in request.FILES:
                 preview_image = request.FILES['preview_image']
-                preview_image_cdn_url = '/mediafils/preview_images' + f"{str(uuid.uuid4())}_{preview_image.name}"
+                preview_image_cdn_url = 'mediafiles/preview_images' + f"{str(uuid.uuid4())}_{preview_image.name}"
                 preview_image_cdn_url = s3_upload(preview_image, preview_image_cdn_url)
             else:
                 preview_image_cdn_url = ""
             background_image = request.FILES['background_image']
-            bg_image_cdn_url = '/mediafils/background_images' + f"{str(uuid.uuid4())}_{background_image.name}"
+            bg_image_cdn_url = 'mediafiles/background_images' + f"{str(uuid.uuid4())}_{background_image.name}"
             resolution_dpi_mapping = {"PNG": 72, "JPEG": 72, "TIFF": 300}
             resolution_dpi = resolution_dpi_mapping.get(data['type'], 72)
             bg_image_cdn_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),data['type'],bg_image_cdn_url,resolution_dpi)
@@ -77,12 +77,12 @@ class TemplateAPIView(APIView):
 
             if 'preview_image' in request.FILES:
                 preview_image = request.FILES['preview_image']
-                preview_image_cdn_url = '/mediafils/preview_images' + f"{str(uuid.uuid4())}_{preview_image.name}"
+                preview_image_cdn_url = 'mediafiles/preview_images' + f"{str(uuid.uuid4())}_{preview_image.name}"
                 template.preview_image_cdn_url = s3_upload(preview_image, preview_image_cdn_url)
 
             if 'background_image' in request.FILES:
                 background_image = request.FILES['background_image']
-                bg_image_cdn_url = '/mediafils/background_images' + f"{str(uuid.uuid4())}_{background_image.name}"
+                bg_image_cdn_url = 'mediafiles/background_images' + f"{str(uuid.uuid4())}_{background_image.name}"
                 template.bg_image_cdn_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),data['type'],bg_image_cdn_url,resolution_dpi_mapping.get(data['type'], 72))
 
             if 'is_shadow' in data:
@@ -225,7 +225,6 @@ class ComposingAPIView(APIView):
         data['created_by_id'] = request.user.id
         data['modified_by_id'] = request.user.id
         if 'base64_img' in data and ',' in data['base64_img']:
-            print(data['base64_img']) 
             product = save_product_image(data['base64_img'])
         else:
             return Response(error("Invalid or missing base64_img"))
@@ -247,6 +246,45 @@ class ComposingAPIView(APIView):
             return Response(error(str(e)))
         
         return Response(created(self, product))
+    def put(self, request, format=None):
+        data = request.data
+        data['modified_by_id'] = request.user.id
+
+        if 'base64_img' in data and ',' in data['base64_img']:
+            product = save_product_image(data['base64_img'])
+        else:
+            return Response(error("Invalid or missing base64_img"))
+        
+        articles_data = data.get('articles', [])
+        articles = []
+        for article_data in articles_data:
+            article_data['modified_by_id'] = request.user.id
+            try:
+                article, created = Article.objects.update_or_create(
+                    id=article_data['id'], defaults=article_data)
+                articles.append(article.pk)
+            except Article.DoesNotExist:
+                return Response(error('Article with id does not exist.'))
+            except Exception as e:
+                return Response(error(str(e)))
+        
+        try:
+            composing, created = Composing.objects.update_or_create(
+                id=data['id'], 
+                defaults ={
+                    'name' : data.get('name', composing.name),
+                    'template_id' : data.get('template_id', composing.template_id),
+                    'cdn_url' : product,
+                    'modified_by_id' : request.user.id
+                }) 
+
+            composing.articles.set(articles)
+        except Composing.DoesNotExist:
+            return Response(error('Composing with id does not exist.'))
+        except Exception as e:
+            return Response(error(str(e)))
+        
+        return Response(updated(self, product))  
 class ComposingArticleTemplateDetail(APIView):
     def get_object(self, pk):
         try:

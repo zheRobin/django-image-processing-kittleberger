@@ -76,7 +76,7 @@ def save_product_image(base64_img):
     img_format = base64_img.split(';')[0].split('/')[1]
     img_name = str(int(time.time())) + '.' + img_format
     local_path = os.path.join(STATIC_URL, img_name)
-    output_path = '/mediafils/compose/'+img_name
+    output_path = 'mediafiles/compose/'+img_name
     if base64_img and ',' in base64_img:
         img_data = base64.b64decode(base64_img.split(',')[1])
     else:
