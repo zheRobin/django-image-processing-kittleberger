@@ -30,7 +30,7 @@ def convert(element):
     return result
 def upload(in_path, out_path):
     with open(in_path, 'rb') as f:
-        file_link = s3_upload( f, out_path)
+        file_link = s3_upload(f, out_path)
     return file_link
 def remove_background(input_path):
     response = requests.get(input_path)
@@ -49,13 +49,15 @@ def save_origin(input_path):
     img = Image.open(BytesIO(input_img))
     img.save(local_path, "PNG")
     return img_name
-def resize_save_img( img, size, type, output_path, resolution_dpi):
+def resize_save_img(img, size, type, output_path, resolution_dpi):
     img = Image.open(img)
-    img_name =  str(int(time.time())) + '.png'
-    local_path = os.path.join(STATIC_URL,img_name)
+    if img.mode not in ('RGB', 'RGBA') or (img.mode == 'RGBA' and type.upper() != 'PNG'):
+        img = img.convert("RGB")
+    img_name = str(int(time.time())) + '.' + type.lower()
+    local_path = os.path.join(STATIC_URL, img_name)
     output_img = img.resize(size)
-    output_img.save(local_path, type, dpi=(resolution_dpi, resolution_dpi))
-    result = upload( local_path, output_path)
+    output_img.save(local_path, type.upper(), dpi=(resolution_dpi, resolution_dpi))
+    result = upload(local_path, output_path)
     return result
 def get_shadow(img):
     img_alpha = img.split()[-1].filter(ImageFilter.MinFilter(3))
@@ -75,7 +77,10 @@ def save_product_image(base64_img):
     img_name = str(int(time.time())) + '.' + img_format
     local_path = os.path.join(STATIC_URL, img_name)
     output_path = '/mediafils/compose/'+img_name
-    img_data = base64.b64decode(base64_img.split(',')[1])
+    if base64_img and ',' in base64_img:
+        img_data = base64.b64decode(base64_img.split(',')[1])
+    else:
+        return Response(error("Invalid base64_img"))
     with open(local_path, 'wb') as f:
         f.write(img_data)
     result = upload( local_path, output_path)
