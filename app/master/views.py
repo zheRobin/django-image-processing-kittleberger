@@ -125,11 +125,11 @@ class ProductFilterAPIView(APIView):
         product = request.GET.get('product', None)
         country = request.GET.get('country', None)
         page = int(request.GET.get('page', '1'))
+        iter_limit = int(request.GET.get('limit', 30))
         regex_product = re.compile(product, re.IGNORECASE) if product else None
         regex_country = re.compile(country, re.IGNORECASE) if country else None
         query = []
         results = []
-        iter_limit = 30
         if regex_product:
             query.append({"$or": [{"linked_products.mfact_key": regex_product}, {"linked_products.name": regex_product}]})
 

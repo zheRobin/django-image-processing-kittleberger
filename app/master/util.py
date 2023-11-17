@@ -89,13 +89,10 @@ def compose_render(template, articles):
     background = Image.open(BytesIO(requests.get(template.bg_image_cdn_url).content))
     articles = sorted(articles, key=lambda x: x.get('z_index', 0))
     for article in articles:
-        print(article['z_index'])
         response = requests.get(article['article_link']).content
         if article['is_transparent'] == "true" or  article['is_transparent']:
-            print(article['is_transparent'])
             media = Image.open(BytesIO(remove(response)))
         else:
-            print(article['is_transparent'])
             media = Image.open(BytesIO(response))
         if article['width'] == 0 or article['height'] == 0:
             article['width'] = media.width
