@@ -99,7 +99,7 @@ def compose_render(template, articles):
             article['height'] = media.height
         ratio = min(int(article['width']) / media.width, int(article['height']) / media.height)
         new_size = tuple(int(dim * ratio) for dim in media.size)
-        img = media.resize(new_size, Image.ANTIALIAS)
+        img = media.resize(new_size, Image.LANCZOS)
         product_bbox = img.split()[-1].filter(ImageFilter.MinFilter(3)).getbbox()
         product = img.crop(product_bbox)
         if template.is_shadow:
