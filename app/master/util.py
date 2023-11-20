@@ -102,17 +102,20 @@ def compose_render(template, articles):
         img = media.resize(new_size, Image.LANCZOS)
         product_bbox = img.split()[-1].filter(ImageFilter.MinFilter(3)).getbbox()
         product = img.crop(product_bbox)
+        left = int(article['left'])+(article['width']-product.width)//2
+        top = int(article['top'])+(article['height']-product.height)//2
         if template.is_shadow:
             shadow = get_shadow(product)
             shadow.putdata([(10, 10, 10, 10) if item[3] > 0 else item for item in shadow.getdata()])
-            shadow_left = article['left'] - (shadow.width - product.width)
-            shadow_top = article['top'] + (product.height - shadow.height)
+            shadow_left = left - (shadow.width - product.width)
+            shadow_top = top + (product.height - shadow.height)
             background.paste(shadow, (int(shadow_left), int(shadow_top)), shadow)
         if product.mode == "RGBA":
             mask = product.split()[3]
-            background.paste(product, (int(article['left'])+(article['width']-product.width)//2, int(article['top'])+(article['height']-product.height)//2), mask)
+            print(left, top)
+            background.paste(product, (left, top), mask)
         else:
-            background.paste(product, (int(article['left']), int(article['top'])))
+            background.paste(product, (left, top))
     buffered = BytesIO()
     background.save(buffered, format=template.file_type, dpi=(template.resolution_dpi, template.resolution_dpi))
     base64_img = base64.b64encode(buffered.getvalue())
