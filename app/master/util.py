@@ -110,7 +110,7 @@ def compose_render(template, articles):
             background.paste(shadow, (int(shadow_left), int(shadow_top)), shadow)
         if product.mode == "RGBA":
             mask = product.split()[3]
-            background.paste(product, (int(article['left']), int(article['top'])), mask)
+            background.paste(product, (int(article['left'])+(article['width']-product.width)//2, int(article['top'])+(article['height']-product.height)//2), mask)
         else:
             background.paste(product, (int(article['left']), int(article['top'])))
     buffered = BytesIO()

@@ -13,6 +13,7 @@ from rest_framework.exceptions import NotFound
 from django.shortcuts import get_object_or_404
 from app.util import *
 from master.util import *
+from master.models import *
 import json
 import environ
 env = environ.Env()
@@ -194,11 +195,16 @@ class ComposingTemplateFilter(APIView):
         paginator.offset = offset
         context = paginator.paginate_queryset(templates, request)
         products = Composing.objects.filter(template__in=context)
+        articles = Article.objects.filter(articles__in=products).distinct()
         template_serializer = ComposingTemplateSerializer(context, many=True)
         product_serializer = ComposingSerializer(products, many=True)
+        article_serializer = ArticleSerializer(articles, many=True)
+        document_last_update = Document.objects.latest('id').upload_date
         result = {
+            "document_last_update":document_last_update,
             "templates":template_serializer.data,
-            "products":product_serializer.data
+            "products":product_serializer.data,
+            "articles":article_serializer.data,
         }
         return paginator.get_paginated_response(result)
 class ComposingArticleTemplateList(APIView):
@@ -254,7 +260,6 @@ class ComposingAPIView(APIView):
             product = save_product_image(data['base64_img'])
         else:
             return Response(error("Invalid or missing base64_img"))
-        
         articles_data = data.get('articles', [])
         articles = []
         for article_data in articles_data:
@@ -269,16 +274,13 @@ class ComposingAPIView(APIView):
                 return Response(error(str(e)))
         
         try:
-            composing, created = Composing.objects.update_or_create(
-                id=data['id'], 
-                defaults ={
-                    'name' : data.get('name', composing.name),
-                    'template_id' : data.get('template_id', composing.template_id),
-                    'cdn_url' : product,
-                    'modified_by_id' : request.user.id
-                }) 
+            composing = Composing.objects.get(id = data['id'])
+            composing.name = data.get('name', composing.name)
+            composing.template_id = data.get('template_id', composing.template_id)
+            composing.cdn_url = product
+            composing.modified_by_id = request.user.id
+            composing.save()
 
-            composing.articles.set(articles)
         except Composing.DoesNotExist:
             return Response(error('Composing with id does not exist.'))
         except Exception as e:
