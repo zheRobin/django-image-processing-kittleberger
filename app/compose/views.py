@@ -230,7 +230,10 @@ class ComposingAPIView(APIView):
         file_type = ComposingTemplate.objects.get(id=template_id).file_type
         base64_image = get_tiff(data['base64_img']) if file_type == 'TIFF' else data['base64_img']
         product = save_product_image(base64_image)
-
+        if file_type == 'TIFF':
+            png_result = save_product_image(data['base64_img'])
+        else:
+            png_result = ''
         articles_data = data.get('articles', [])
         articles = []
         for article_data in articles_data:
@@ -242,7 +245,7 @@ class ComposingAPIView(APIView):
             except Exception as e:
                 return Response(error(str(e)))
         try:
-            composing = Composing.objects.create(name = data['name'], template_id = data['template_id'], cdn_url = product, created_by_id = request.user.id, modified_by_id = request.user.id)
+            composing = Composing.objects.create(name = data['name'], template_id = data['template_id'], cdn_url = product, png_result = png_result,created_by_id = request.user.id, modified_by_id = request.user.id)
             composing.articles.set(articles)
         except Exception as e:
             return Response(error(str(e)))

@@ -69,6 +69,7 @@ class Composing(models.Model):
     template = models.ForeignKey(ComposingTemplate, related_name='template', on_delete=models.CASCADE)
     articles = models.ManyToManyField(Article, related_name='articles')
     cdn_url = models.CharField(max_length=255)
+    png_result = models.CharField(max_length=255)
     created_by = models.ForeignKey(User, related_name='composings_created', on_delete=models.CASCADE)
     modified_by = models.ForeignKey(User, related_name='composings_modified', on_delete=models.CASCADE)
     created = models.DateTimeField(auto_now_add=True)
