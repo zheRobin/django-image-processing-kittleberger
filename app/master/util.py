@@ -54,7 +54,6 @@ def resize_save_img(img, size, type, output_path, resolution_dpi):
     if img.mode not in ('RGB', 'RGBA') or (img.mode == 'RGBA' and type.upper() != 'PNG'):
         img = img.convert("RGB")
     format = 'PNG' if type == 'TIFF' else type
-    print(format)
     img_name = str(int(time.time())) + '.' + format.lower()
     local_path = os.path.join(STATIC_URL, img_name)
     output_img = img.resize(size)

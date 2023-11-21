@@ -56,10 +56,8 @@ class TemplateAPIView(APIView):
             serializer = ComposingTemplateSerializer(template)
             return Response(created(self, serializer.data))
         except KeyError as e:
-            print(str(e))
             return Response(error( "All field are required: {}".format(str(e))))
         except Exception as e:
-            print(str(e))
 
             return Response(error( str(e)))
     def put(self, request, pk):
