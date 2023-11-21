@@ -181,3 +181,11 @@ class ComposingGenAPIView(APIView):
         compose = compose_render(template, data['articles'])
 
         return Response(success(compose))
+    
+class TiffConvAPIView(APIView):
+    def post(self, request):
+        tiff_image = request.data.get('tiff_image')
+        if not tiff_image:
+            return Response(error("tiff_image is required"))
+        result = conv_tiff(tiff_image)
+        return Response(success(result))

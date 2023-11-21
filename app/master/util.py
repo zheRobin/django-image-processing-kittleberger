@@ -1,6 +1,6 @@
 from django.conf import settings
 from lxml import etree as ET
-import json
+from urllib.parse import urlparse
 import requests
 from rembg import remove
 from PIL import Image,ImageFilter
@@ -53,11 +53,13 @@ def resize_save_img(img, size, type, output_path, resolution_dpi):
     img = Image.open(img)
     if img.mode not in ('RGB', 'RGBA') or (img.mode == 'RGBA' and type.upper() != 'PNG'):
         img = img.convert("RGB")
-    img_name = str(int(time.time())) + '.' + type.lower()
+    format = 'PNG' if type == 'TIFF' else type
+    print(format)
+    img_name = str(int(time.time())) + '.' + format.lower()
     local_path = os.path.join(STATIC_URL, img_name)
     output_img = img.resize(size)
-    output_img.save(local_path, type.upper(), dpi=(resolution_dpi, resolution_dpi))
-    result = upload(local_path, output_path)
+    output_img.save(local_path, format.upper(), dpi=(resolution_dpi, resolution_dpi))
+    result = upload(local_path, output_path+img_name)
     return result
 def get_shadow(img):
     img_alpha = img.split()[-1].filter(ImageFilter.MinFilter(3))
@@ -85,6 +87,7 @@ def save_product_image(base64_img):
         f.write(img_data)
     result = upload( local_path, output_path)
     return result
+
 def compose_render(template, articles):
     background = Image.open(BytesIO(requests.get(template.bg_image_cdn_url).content))
     articles = sorted(articles, key=lambda x: x.get('z_index', 0))
@@ -112,12 +115,49 @@ def compose_render(template, articles):
             background.paste(shadow, (int(shadow_left), int(shadow_top)), shadow)
         if product.mode == "RGBA":
             mask = product.split()[3]
-            print(left, top)
             background.paste(product, (left, top), mask)
         else:
             background.paste(product, (left, top))
     buffered = BytesIO()
-    background.save(buffered, format=template.file_type, dpi=(template.resolution_dpi, template.resolution_dpi))
+    format = 'PNG' if template.file_type == 'TIFF' else template.file_type
+    background.save(buffered, format=format, dpi=(template.resolution_dpi, template.resolution_dpi))
     base64_img = base64.b64encode(buffered.getvalue())
-    img_data = f"data:image/{template.file_type.lower()};base64,{base64_img.decode('utf-8')}"
+    img_data = f"data:image/{format.lower()};base64,{base64_img.decode('utf-8')}"
     return img_data
+
+def conv_tiff(image_or_url):
+    if urlparse(image_or_url).scheme in ['http', 'https']:
+        response = requests.get(image_or_url, stream=True)
+        response.raise_for_status()
+        image_data = response.content
+    else:
+        try:
+            image_data = base64.b64decode(image_or_url.split(',')[1])
+        except Exception as e:
+            raise ValueError("Invalid input, please enter a valid URL or base64 image") from e    
+
+    with BytesIO(image_data) as image_io:
+        with Image.open(image_io) as img:
+            with BytesIO() as output:
+                img.save(output, format='PNG')
+                base64_img = base64.b64encode(output.getvalue())
+        
+    return f"data:image/png;base64,{base64_img.decode('utf-8')}"
+
+def get_tiff(image_or_url):
+    if urlparse(image_or_url).scheme in ['http', 'https']:
+        response = requests.get(image_or_url, stream=True)
+        response.raise_for_status()
+        image_data = response.content
+    else:
+        try:
+            image_data = base64.b64decode(image_or_url.split(',')[1])
+        except Exception as e:
+            raise ValueError("Invalid input, please enter a valid URL or base64 image") from e
+    with BytesIO(image_data) as image_io:
+        with Image.open(image_io) as img:
+            with BytesIO() as output:
+                img.save(output, format='TIFF')
+                base64_img = base64.b64encode(output.getvalue())
+        
+    return f"data:image/tiff;base64,{base64_img.decode('utf-8')}"

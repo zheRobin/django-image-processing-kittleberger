@@ -26,18 +26,16 @@ class TemplateAPIView(APIView):
     permission_classes = (IsAuthenticated,)
     def post(self, request):
         try:
-            data=request.POST.dict()
+            data=request.POST.dict()            
+            resolution_dpi_mapping = {"PNG": 72, "JPEG": 72, "TIFF": 300}
+            resolution_dpi = resolution_dpi_mapping.get(data['type'], 72)
             if 'preview_image' in request.FILES:
                 preview_image = request.FILES['preview_image']
-                preview_image_cdn_url = 'mediafiles/preview_images' + f"{str(uuid.uuid4())}_{preview_image.name}"
-                preview_image_cdn_url = s3_upload(preview_image, preview_image_cdn_url)
+                preview_image_cdn_url = resize_save_img(preview_image, (400,int(400*int(data['resolution_height'])/int(data['resolution_width']))),data['type'],'mediafiles/preview_images/',resolution_dpi)
             else:
                 preview_image_cdn_url = ""
             background_image = request.FILES['background_image']
-            bg_image_cdn_url = 'mediafiles/background_images' + f"{str(uuid.uuid4())}_{background_image.name}"
-            resolution_dpi_mapping = {"PNG": 72, "JPEG": 72, "TIFF": 300}
-            resolution_dpi = resolution_dpi_mapping.get(data['type'], 72)
-            bg_image_cdn_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),data['type'],bg_image_cdn_url,resolution_dpi)
+            bg_image_cdn_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),data['type'],'mediafiles/background_images/',resolution_dpi)
             data['is_shadow'] = json.loads(data['is_shadow'].lower())
             brands, applications, article_placements = [], [], []
             pos_index = 0
@@ -78,13 +76,11 @@ class TemplateAPIView(APIView):
 
             if 'preview_image' in request.FILES:
                 preview_image = request.FILES['preview_image']
-                preview_image_cdn_url = 'mediafiles/preview_images' + f"{str(uuid.uuid4())}_{preview_image.name}"
-                template.preview_image_cdn_url = s3_upload(preview_image, preview_image_cdn_url)
+                template.preview_image_cdn_url = resize_save_img(preview_image, (400,int(400*int(data['resolution_height'])/int(data['resolution_width']))),data['type'],'mediafiles/preview_images/',resolution_dpi_mapping.get(data['type'], 72))
 
             if 'background_image' in request.FILES:
                 background_image = request.FILES['background_image']
-                bg_image_cdn_url = 'mediafiles/background_images' + f"{str(uuid.uuid4())}_{background_image.name}"
-                template.bg_image_cdn_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),data['type'],bg_image_cdn_url,resolution_dpi_mapping.get(data['type'], 72))
+                template.bg_image_cdn_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),data['type'],'mediafiles/background_images/',resolution_dpi_mapping.get(data['type'], 72))
 
             if 'is_shadow' in data:
                 template.is_shadow = json.loads(data['is_shadow'].lower())
@@ -230,10 +226,12 @@ class ComposingAPIView(APIView):
         data = request.data
         data['created_by_id'] = request.user.id
         data['modified_by_id'] = request.user.id
-        if 'base64_img' in data and ',' in data['base64_img']:
-            product = save_product_image(data['base64_img'])
-        else:
+        template_id = data.get('template_id')
+        if 'base64_img' not in data or ',' not in data['base64_img']:
             return Response(error("Invalid or missing base64_img"))
+        file_type = ComposingTemplate.objects.get(id=template_id).file_type
+        base64_image = get_tiff(data['base64_img']) if file_type == 'TIFF' else data['base64_img']
+        product = save_product_image(base64_image)
 
         articles_data = data.get('articles', [])
         articles = []
