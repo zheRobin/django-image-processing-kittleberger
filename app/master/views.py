@@ -3,7 +3,6 @@ from django.core.files.base import ContentFile
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
-from django.http import StreamingHttpResponse
 from pymongo import MongoClient
 import zipfile
 import json
@@ -20,11 +19,11 @@ from .models import APIKey
 from .serializers import *
 from compose.serializers import *
 from accounts.models import User
-from django.contrib.sites.shortcuts import get_current_site
 from pymongo.errors import ConnectionFailure
 from django.http import Http404
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
+from datetime import datetime
 env = environ.Env()
 environ.Env.read_env()
 
@@ -60,6 +59,7 @@ class ParseAPIView(APIView):
     def post(self, request):
         api_key = request.POST.get('api_key')
         api_key_instance = get_object_or_404(APIKey, apikey=api_key)
+        api_key_instance.last_used = datetime.now()
         api_key_instance.save()
         file = request.FILES['file']
         filepath = default_storage.save(os.path.join('temp', file.name), ContentFile(file.read()))
