@@ -34,8 +34,10 @@ class APIKeyAPIView(APIView):
         try:
             user = User.objects.get(pk=request.user.pk)
             name = request.data['name']
-            ak_obj = APIKey.objects.create(user=user, name = name)
-            return Response(success( ak_obj.apikey))
+            APIKey.objects.create(user=user, name = name)
+            api_keys = APIKey.objects.all()
+            data = APIKeySerializer(api_keys, many=True).data
+            return Response(success(data))
         except User.DoesNotExist:
             return Response(error( "Bad request"))
 

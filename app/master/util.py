@@ -167,7 +167,6 @@ def conv_tiff(image_or_url):
                 base64_img = base64.b64encode(output.getvalue())
         
     return f"data:image/png;base64,{base64_img.decode('utf-8')}"
-
 def get_tiff(image_or_url):
     if urlparse(image_or_url).scheme in ['http', 'https']:
         response = requests.get(image_or_url, stream=True)
@@ -178,10 +177,13 @@ def get_tiff(image_or_url):
             image_data = base64.b64decode(image_or_url.split(',')[1])
         except Exception as e:
             raise ValueError("Invalid input, please enter a valid URL or base64 image") from e
+
     with BytesIO(image_data) as image_io:
         with Image.open(image_io) as img:
+            img_dpi = (300, 300)
+
             with BytesIO() as output:
-                img.save(output, format='TIFF')
+                img.save(output, format='TIFF', dpi=img_dpi)
                 base64_img = base64.b64encode(output.getvalue())
-        
+
     return f"data:image/tiff;base64,{base64_img.decode('utf-8')}"

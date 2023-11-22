@@ -102,12 +102,14 @@ class TemplateAPIView(APIView):
                 for placement in json.loads(data['article_placements']):
                     if 'id' in placement and ComposingArticleTemplate.objects.filter(id=placement['id']).exists():
                         placement_obj = ComposingArticleTemplate.objects.get(id=placement['id'])
-                        placement_obj.pos_index = placement['pos_index']
-                        placement_obj.position_x = placement['position_x']
-                        placement_obj.position_y = placement['position_y']
-                        placement_obj.height = placement['height']
-                        placement_obj.width = placement['width']
-                        placement_obj.z_index = placement['z_index']
+                        
+                        placement_obj.pos_index = placement.get('pos_index', placement_obj.pos_index)
+                        placement_obj.position_x = placement.get('position_x', placement_obj.position_x)
+                        placement_obj.position_y = placement.get('position_y', placement_obj.position_y)
+                        placement_obj.height = placement.get('height', placement_obj.height)
+                        placement_obj.width = placement.get('width', placement_obj.width)
+                        placement_obj.z_index = placement.get('z_index', placement_obj.z_index)
+                        
                         placement_obj.modified_by_id = request.user.pk
                         placement_obj.save()
                     else:

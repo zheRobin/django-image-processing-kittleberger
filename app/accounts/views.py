@@ -174,3 +174,13 @@ class UserListAPIView(APIView):
 
         except Exception as e:
             return Response(server_error( str(e)))
+    def delete(self, request):
+        try:
+            data = request.data
+            user = User.objects.get(id=data['id'])
+            user.delete()
+            return Response(deleted(self))
+        except ObjectDoesNotExist:
+            return Response(error( "User Not Found!"))
+        except Exception as e:
+            return Response(server_error( str(e)))
