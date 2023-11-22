@@ -99,11 +99,10 @@ class TemplateAPIView(APIView):
                 template.application.set(app_ids)
 
             if 'article_placements' in data:
+                max_pos_index = ComposingArticleTemplate.objects.filter(id__in=template.article_placements.all().values_list('id', flat=True)).aggregate(Max('pos_index'))['pos_index__max'] or 0
                 for placement in json.loads(data['article_placements']):
-                    max_pos_index = ComposingArticleTemplate.objects.filter(template=template).aggregate(Max('pos_index'))['pos_index__max'] or 0
                     if 'id' in placement and ComposingArticleTemplate.objects.filter(id=placement['id']).exists():
                         placement_obj = ComposingArticleTemplate.objects.get(id=placement['id'])
-                        
                         placement_obj.pos_index = placement.get('pos_index', placement_obj.pos_index)
                         placement_obj.position_x = placement.get('position_x', placement_obj.position_x)
                         placement_obj.position_y = placement.get('position_y', placement_obj.position_y)
@@ -217,7 +216,6 @@ class ComposingArticleTemplateList(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 class ComposingAPIView(APIView):
     def get(self, request):
         products = Composing.objects.all()
