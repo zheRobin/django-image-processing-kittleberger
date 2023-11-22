@@ -1,4 +1,4 @@
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Max
 from django.http import StreamingHttpResponse
 from rest_framework import status
 from rest_framework.views import APIView
@@ -100,6 +100,7 @@ class TemplateAPIView(APIView):
 
             if 'article_placements' in data:
                 for placement in json.loads(data['article_placements']):
+                    max_pos_index = ComposingArticleTemplate.objects.filter(template=template).aggregate(Max('pos_index'))['pos_index__max'] or 0
                     if 'id' in placement and ComposingArticleTemplate.objects.filter(id=placement['id']).exists():
                         placement_obj = ComposingArticleTemplate.objects.get(id=placement['id'])
                         
@@ -113,7 +114,8 @@ class TemplateAPIView(APIView):
                         placement_obj.modified_by_id = request.user.pk
                         placement_obj.save()
                     else:
-                        placement_obj = ComposingArticleTemplate.objects.create(pos_index = placement['pos_index'],position_x=placement['position_x'], position_y=placement['position_y'], height= placement['height'], width= placement['width'], z_index = placement['z_index'],  created_by_id=request.user.pk, modified_by_id=request.user.pk)
+                        max_pos_index += 1
+                        placement_obj = ComposingArticleTemplate.objects.create(pos_index = max_pos_index,position_x=placement['position_x'], position_y=placement['position_y'], height= placement['height'], width= placement['width'], z_index = placement['z_index'],  created_by_id=request.user.pk, modified_by_id=request.user.pk)
                     placements_ids.append(placement_obj.pk)
                 template.article_placements.set(placements_ids)
 

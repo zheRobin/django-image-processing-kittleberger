@@ -126,7 +126,7 @@ class UserListAPIView(APIView):
 
     def get(self, request):
         try:
-            users = User.objects.all().exclude(is_superuser=True)
+            users = User.objects.all().exclude(is_superuser=True).exclude(pk=request.user.pk)
             serializer = UserSerializer(users, many=True)
             return Response(success( serializer.data))
 
@@ -155,10 +155,10 @@ class UserListAPIView(APIView):
         except Exception as e:
             return Response(server_error( str(e)))
 
-    def put(self, request):
+    def put(self, request,user_id):
         try:
             data = request.data
-            user = User.objects.get(id=data['id'])
+            user = User.objects.get(id=user_id)
             if 'email' in data and data['email'].strip():
                 user.email = data['email']
             if 'username' in data and data['username'].strip():
@@ -174,13 +174,12 @@ class UserListAPIView(APIView):
 
         except Exception as e:
             return Response(server_error( str(e)))
-    def delete(self, request):
+    def delete(self, request, user_id):
         try:
-            data = request.data
-            user = User.objects.get(id=data['id'])
+            user = User.objects.get(id=user_id)
             user.delete()
             return Response(deleted(self))
         except ObjectDoesNotExist:
-            return Response(error( "User Not Found!"))
+            return Response(error("User Not Found!"))
         except Exception as e:
-            return Response(server_error( str(e)))
+            return Response(server_error(str(e)))
