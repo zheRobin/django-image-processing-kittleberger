@@ -92,7 +92,8 @@ def compose_render(template, articles):
     articles = sorted(articles, key=lambda x: x.get('z_index', 0))
     for article in articles:
         response = requests.get(article['article_link']).content
-        if article['is_transparent'] == "true" or  article['is_transparent']:
+        if article['is_transparent'] == True or article['is_transparent']:
+            print("++++++++++++++++++++", article['is_transparent'])
             media = Image.open(BytesIO(remove(response)))
         else:
             media = Image.open(BytesIO(response))
