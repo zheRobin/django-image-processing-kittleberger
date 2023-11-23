@@ -10,6 +10,7 @@ from io import BytesIO
 import os, time, base64
 from app.util import *
 ATTRIBUTES_XPATH = ET.XPath('.//attribute')
+URLS_XPATH = ET.XPath('.//urls/url')
 LINKED_PRODUCTS_XPATH = ET.XPath('.//linked_products/product')
 LINKED_PRODUCT_ATTRIBUTES_XPATH = ET.XPath('.//attributes/attribute')
 VALUE_XPATH = ET.XPath('./value/text()')
@@ -22,10 +23,12 @@ def convert(element):
                         'mfact_key': product.get('mfact_key'), 
                         'attributes': {product_attr.get('ukey'): VALUE_XPATH(product_attr) for product_attr in LINKED_PRODUCT_ATTRIBUTES_XPATH(product)} } 
                        for product in LINKED_PRODUCTS_XPATH(element)]
+    urls = {url.get('mimetype'): url.text for url in URLS_XPATH(element)}
     result = {
         'id': element.get('id'), 
         'name': element.get('name'), 
-        'linked_products': linked_products
+        'linked_products': linked_products,
+        'urls': urls
     }
 
     result.update(attributes)
