@@ -26,9 +26,11 @@ class TemplateAPIView(APIView):
     permission_classes = (IsAuthenticated,)
     def post(self, request):
         try:
-            data=request.POST.dict()            
-            resolution_dpi_mapping = {"PNG": 72, "JPEG": 72, "TIFF": 300}
-            resolution_dpi = resolution_dpi_mapping.get(data['type'], 72)
+            data=request.POST.dict()
+            if int(data['resolution_width'])*int(data['resolution_height'])>=10000000:
+                return Response(error("Image resolution must be under 10M pixel"))            
+            resolution_dpi_mapping = {"PNG": 144, "JPEG": 144, "TIFF": 300}
+            resolution_dpi = resolution_dpi_mapping.get(data['type'], 144)
             if 'preview_image' in request.FILES:
                 preview_image = request.FILES['preview_image']
                 preview_image_cdn_url = resize_save_img(preview_image, (400,int(400*int(data['resolution_height'])/int(data['resolution_width']))),data['type'],'mediafiles/preview_images/',resolution_dpi)
@@ -63,22 +65,24 @@ class TemplateAPIView(APIView):
     def put(self, request, pk):
         try:
             data = request.data
+            if int(data['resolution_width'])*int(data['resolution_height'])>=10000000:
+                return Response(error("Image resolution must be under 10M pixel"))
             template = ComposingTemplate.objects.get(pk=pk)
-            resolution_dpi_mapping = {"PNG": 72, "JPEG": 72, "TIFF": 300}
+            resolution_dpi_mapping = {"PNG": 144, "JPEG": 144, "TIFF": 300}
             if 'name' in data:
                 template.name = data['name']
             if 'type' in data:
                 template.file_type = data['type']
-                resolution_dpi = resolution_dpi_mapping.get(data['type'], 72)
+                resolution_dpi = resolution_dpi_mapping.get(data['type'], 144)
                 template.resolution_dpi = resolution_dpi
 
             if 'preview_image' in request.FILES:
                 preview_image = request.FILES['preview_image']
-                template.preview_image_cdn_url = resize_save_img(preview_image, (400,int(400*int(data['resolution_height'])/int(data['resolution_width']))),data['type'],'mediafiles/preview_images/',resolution_dpi_mapping.get(data['type'], 72))
+                template.preview_image_cdn_url = resize_save_img(preview_image, (400,int(400*int(data['resolution_height'])/int(data['resolution_width']))),data['type'],'mediafiles/preview_images/',resolution_dpi_mapping.get(data['type'], 144))
 
             if 'background_image' in request.FILES:
                 background_image = request.FILES['background_image']
-                template.bg_image_cdn_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),data['type'],'mediafiles/background_images/',resolution_dpi_mapping.get(data['type'], 72))
+                template.bg_image_cdn_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),data['type'],'mediafiles/background_images/',resolution_dpi_mapping.get(data['type'], 144))
 
             if 'is_shadow' in data:
                 template.is_shadow = json.loads(data['is_shadow'].lower())

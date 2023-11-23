@@ -2,6 +2,8 @@ from django.conf import settings
 from lxml import etree as ET
 from urllib.parse import urlparse
 import requests
+import cv2
+import numpy as np
 from rembg import remove
 from PIL import Image,ImageFilter
 from io import BytesIO
@@ -87,6 +89,16 @@ def save_product_image(base64_img):
     result = upload( local_path, output_path)
     return result
 
+def remove_background_and_inner(input_image_data):
+    input_img = cv2.imdecode(np.frombuffer(input_image_data, np.uint8), cv2.IMREAD_UNCHANGED)
+    removed_bg_img = remove(input_img)
+    gray_img = cv2.cvtColor(removed_bg_img, cv2.COLOR_BGR2GRAY)
+    blur_img = cv2.GaussianBlur(gray_img, (15, 15), 0)
+    _, thresh_img = cv2.threshold(blur_img, 230, 255, cv2.THRESH_BINARY_INV)
+    result_image = cv2.cvtColor(removed_bg_img, cv2.COLOR_BGR2BGRA)
+    result_image[thresh_img == 0] = (0, 0, 0, 0)
+    _, output_img_data = cv2.imencode('.png', result_image)
+    return output_img_data.tobytes()
 def compose_render(template, articles):
     background = Image.open(BytesIO(requests.get(template.bg_image_cdn_url).content))
     articles = sorted(articles, key=lambda x: x.get('z_index', 0))
@@ -94,7 +106,7 @@ def compose_render(template, articles):
     for article in articles:
         response = requests.get(article['article_link']).content
         if article['is_transparent'] == True or article['is_transparent']:
-            media = Image.open(BytesIO(remove(response)))
+            media = Image.open(BytesIO(remove_background_and_inner(response)))
         else:
             media = Image.open(BytesIO(response))
 

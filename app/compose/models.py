@@ -37,7 +37,7 @@ class ComposingTemplate(models.Model):
     is_shadow = models.BooleanField(default=False)
     resolution_width = models.IntegerField(default=800)
     resolution_height = models.IntegerField(default=600)
-    resolution_dpi = models.IntegerField(default=72)
+    resolution_dpi = models.IntegerField(default=144)
     bg_image_cdn_url = models.CharField(max_length=255)
     preview_image_cdn_url = models.CharField(max_length=255)
     article_placements = models.ManyToManyField(ComposingArticleTemplate, related_name='articles')
