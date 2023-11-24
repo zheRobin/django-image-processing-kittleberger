@@ -23,7 +23,7 @@ from pymongo.errors import ConnectionFailure
 from django.http import Http404
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
-from datetime import datetime
+from django.utils import timezone
 env = environ.Env()
 environ.Env.read_env()
 
@@ -59,7 +59,7 @@ class ParseAPIView(APIView):
     def post(self, request):
         api_key = request.POST.get('api_key')
         api_key_instance = get_object_or_404(APIKey, apikey=api_key)
-        api_key_instance.last_used = datetime.now()
+        api_key_instance.last_used = timezone.now()
         api_key_instance.save()
         file = request.FILES['file']
         filepath = default_storage.save(os.path.join('temp', file.name), ContentFile(file.read()))
@@ -136,11 +136,11 @@ class ProductFilterAPIView(APIView):
             query.append({"$or": [{"linked_products.mfact_key": regex_product}, {"linked_products.name": regex_product}]})
 
         if regex_country:
-            query.append({"1_COUNTRY": regex_country})
+            query.append({"linked_products.sale_countries": regex_country})
 
         cursor = db[file_id].find({"$and": query}).skip((page-1) * iter_limit) if query else db[file_id].find().skip((page-1) * iter_limit)
         for document in cursor:
-            cdn_urls = document.get('CDN_URLS')
+            cdn_urls = document.get('urls')
             linked_products = document.get("linked_products", [])
             if cdn_urls and linked_products:
                 document_id = str(document.get('_id', ''))
