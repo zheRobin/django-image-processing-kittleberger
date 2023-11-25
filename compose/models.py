@@ -50,8 +50,8 @@ class ComposingTemplate(models.Model):
 class Article(models.Model):
     pos_index = models.IntegerField()
     name = models.CharField(max_length=255)
-    number = models.CharField(max_length=50)
-    cdn_url = models.CharField(max_length=255)
+    article_number = models.CharField(max_length=50)
+    mediaobject_id = models.CharField(max_length=50)
     is_transparent = models.BooleanField(default=False)
     scaling = models.IntegerField()
     alignment = models.CharField(max_length=20, default='center')
