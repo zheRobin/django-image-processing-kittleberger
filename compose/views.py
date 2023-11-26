@@ -33,11 +33,16 @@ class TemplateAPIView(APIView):
             resolution_dpi = resolution_dpi_mapping.get(data['type'], 144)
             if 'preview_image' in request.FILES:
                 preview_image = request.FILES['preview_image']
-                preview_image_cdn_url = resize_save_img(preview_image, (400,int(400*int(data['resolution_height'])/int(data['resolution_width']))),data['type'],'mediafiles/preview_images/',resolution_dpi)
+                preview_image_cdn_url = resize_save_img(preview_image, (400,int(400*int(data['resolution_height'])/int(data['resolution_width']))),'JPEG','mediafiles/preview_images/',resolution_dpi)
             else:
                 preview_image_cdn_url = ""
             background_image = request.FILES['background_image']
-            bg_image_cdn_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),data['type'],'mediafiles/background_images/',resolution_dpi)
+            format = 'PNG' if data['type'] == 'TIFF' else data['type']
+            if data['type'] == 'TIFF':
+                bg_image_tiff_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),data['type'],'mediafiles/background_images/',resolution_dpi)
+            else:
+                bg_image_tiff_url = ''
+            bg_image_cdn_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),format,'mediafiles/background_images/',resolution_dpi)
             data['is_shadow'] = json.loads(data['is_shadow'].lower())
             brands, applications, article_placements = [], [], []
             pos_index = 0
@@ -51,7 +56,7 @@ class TemplateAPIView(APIView):
                 pos_index += 1
                 placement_obj = ComposingArticleTemplate.objects.create(pos_index = pos_index, position_x = placement['position_x'], position_y = placement['position_y'], height = placement['height'], width = placement['width'], z_index = placement['z_index'],  created_by_id = request.user.pk, modified_by_id = request.user.pk)
                 article_placements.append(placement_obj.pk)
-            template = ComposingTemplate.objects.create(name = data['name'], is_shadow = data['is_shadow'],resolution_width = data['resolution_width'],resolution_dpi = resolution_dpi, file_type = data['type'],resolution_height=data['resolution_height'], created_by_id = request.user.pk, modified_by_id = request.user.pk, preview_image_cdn_url = preview_image_cdn_url, bg_image_cdn_url = bg_image_cdn_url)
+            template = ComposingTemplate.objects.create(name = data['name'], is_shadow = data['is_shadow'],resolution_width = data['resolution_width'],resolution_dpi = resolution_dpi, file_type = data['type'],resolution_height=data['resolution_height'], created_by_id = request.user.pk, modified_by_id = request.user.pk, preview_image_cdn_url = preview_image_cdn_url, bg_image_cdn_url = bg_image_cdn_url, bg_image_tiff_url = bg_image_tiff_url)
             template.brand.set(brands)
             template.application.set(applications)
             template.article_placements.set(article_placements)
@@ -78,11 +83,16 @@ class TemplateAPIView(APIView):
 
             if 'preview_image' in request.FILES:
                 preview_image = request.FILES['preview_image']
-                template.preview_image_cdn_url = resize_save_img(preview_image, (400,int(400*int(data['resolution_height'])/int(data['resolution_width']))),data['type'],'mediafiles/preview_images/',resolution_dpi_mapping.get(data['type'], 144))
+                template.preview_image_cdn_url = resize_save_img(preview_image, (400,int(400*int(data['resolution_height'])/int(data['resolution_width']))),'JPEG','mediafiles/preview_images/',resolution_dpi_mapping.get(data['type'], 144))
 
             if 'background_image' in request.FILES:
                 background_image = request.FILES['background_image']
-                template.bg_image_cdn_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),data['type'],'mediafiles/background_images/',resolution_dpi_mapping.get(data['type'], 144))
+                format = 'PNG' if data['type'] == 'TIFF' else data['type']
+                if data['type'] == 'TIFF':
+                    template.bg_image_tiff_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),data['type'],'mediafiles/background_images/',resolution_dpi)
+                else:
+                    template.bg_image_tiff_url = ''
+                template.bg_image_cdn_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),format,'mediafiles/background_images/',resolution_dpi_mapping.get(data['type'], 144))
 
             if 'is_shadow' in data:
                 template.is_shadow = json.loads(data['is_shadow'].lower())

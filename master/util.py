@@ -54,11 +54,10 @@ def resize_save_img(img, size, type, output_path, resolution_dpi):
     img = Image.open(img)
     if img.mode not in ('RGB', 'RGBA') or (img.mode == 'RGBA' and type.upper() != 'PNG'):
         img = img.convert("RGB")
-    format = 'PNG' if type == 'TIFF' else type
-    img_name = str(int(time.time())) + '.' + format.lower()
+    img_name = str(int(time.time())) + '.' + type.lower()
     local_path = os.path.join(STATIC_URL, img_name)
     output_img = img.resize(size)
-    output_img.save(local_path, format.upper(), dpi=(resolution_dpi, resolution_dpi))
+    output_img.save(local_path, type.upper(), dpi=(resolution_dpi, resolution_dpi))
     result = upload(local_path, output_path+img_name)
     return result
 def get_shadow(img):

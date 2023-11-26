@@ -39,6 +39,7 @@ class ComposingTemplate(models.Model):
     resolution_height = models.IntegerField(default=600)
     resolution_dpi = models.IntegerField(default=144)
     bg_image_cdn_url = models.CharField(max_length=255)
+    bg_image_tiff_url = models.CharField(max_length=255)
     preview_image_cdn_url = models.CharField(max_length=255)
     article_placements = models.ManyToManyField(ComposingArticleTemplate, related_name='articles')
     file_type = models.CharField(max_length=10, default='JPEG')
