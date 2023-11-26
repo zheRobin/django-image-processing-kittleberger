@@ -125,18 +125,19 @@ class ProductFilterAPIView(APIView):
         db = client[os.getenv('MONGO_DB_NAME')]
         file_id = Document.objects.latest('id').file_id
         product = request.GET.get('product', None)
-        country = request.GET.get('country', None)
+        country = request.GET.get('country', [])
+        country_list = Country.objects.filter(index__in=country)
+        country_names = [c.name for c in country_list]
         page = int(request.GET.get('page', '1'))
         iter_limit = int(request.GET.get('limit', 30))
-        regex_product = re.compile(product, re.IGNORECASE) if product else None
-        regex_country = re.compile(country, re.IGNORECASE) if country else None
         query = []
         results = []
         if regex_product:
+            regex_product = re.compile(product, re.IGNORECASE) if product else None
             query.append({"$or": [{"linked_products.mfact_key": regex_product}, {"linked_products.name": regex_product}]})
 
-        # if regex_country:
-        #     query.append({"linked_products.sale_countries": regex_country})
+        if country_names:
+            query.append({"linked_products.sale_countries": {"$in": country_names}})
 
         cursor = db[file_id].find({"$and": query}).skip((page-1) * iter_limit) if query else db[file_id].find().skip((page-1) * iter_limit)
         for document in cursor:
