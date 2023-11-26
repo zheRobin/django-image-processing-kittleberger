@@ -97,7 +97,7 @@ def remove_background_and_inner(input_image_data):
     result_image[thresh_img == 0] = (0, 0, 0, 0)
     _, output_img_data = cv2.imencode('.png', result_image)
     return output_img_data.tobytes()
-def compose_render(template, articles):
+def compose_render(template, articles, format):
     background = Image.open(BytesIO(requests.get(template.bg_image_cdn_url).content))
     articles = sorted(articles, key=lambda x: x.get('z_index', 0))
     
