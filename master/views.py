@@ -135,8 +135,8 @@ class ProductFilterAPIView(APIView):
         if regex_product:
             query.append({"$or": [{"linked_products.mfact_key": regex_product}, {"linked_products.name": regex_product}]})
 
-        if regex_country:
-            query.append({"linked_products.sale_countries": regex_country})
+        # if regex_country:
+        #     query.append({"linked_products.sale_countries": regex_country})
 
         cursor = db[file_id].find({"$and": query}).skip((page-1) * iter_limit) if query else db[file_id].find().skip((page-1) * iter_limit)
         for document in cursor:
@@ -155,7 +155,7 @@ class ProductFilterAPIView(APIView):
                 document_id = str(document.get('_id', ''))
                 for product in linked_products:
                     if regex_product is None or regex_product.search(product.get('mfact_key', '')) or regex_product.search(product.get('name', '')):
-                        results.append({'document_id': document_id,'mediaobject_id':product.get('id',''), 'article_number': product.get('mfact_key', ''), 'name': product.get('name', ''), 'render_url': render_url, 'tiff_url': tiff_url})
+                        results.append({'document_id': document_id,'mediaobject_id':document.get('id',''), 'article_number': product.get('mfact_key', ''), 'name': product.get('name', ''), 'render_url': render_url, 'tiff_url': tiff_url})
                     if len(results) == iter_limit:
                         break
             if len(results) == iter_limit:

@@ -261,11 +261,19 @@ class ComposingAPIView(APIView):
     def put(self, request, format=None):
         data = request.data
         data['modified_by_id'] = request.user.id
-
-        if 'base64_img' in data and ',' in data['base64_img']:
-            product = save_product_image(data['base64_img'])
-        else:
+        template_id = data.get('template_id')
+        articles_data = data.get('articles', [])
+        articles = []
+        if 'base64_img' not in data or ',' not in data['base64_img']:
             return Response(error("Invalid or missing base64_img"))
+        template = ComposingTemplate.objects.get(id=template_id)
+        format = template.file_type
+        base64_image = tiff_compose_save(template, articles_data, format) if format == 'TIFF' else data['base64_img']
+        product = save_product_image(base64_image)
+        if format == 'TIFF':
+            png_result = save_product_image(data['base64_img'])
+        else:
+            png_result = ''
         articles_data = data.get('articles', [])
         articles = []
         for article_data in articles_data:
@@ -284,6 +292,7 @@ class ComposingAPIView(APIView):
             composing.name = data.get('name', composing.name)
             composing.template_id = data.get('template_id', composing.template_id)
             composing.cdn_url = product
+            composing.png_result = png_result
             composing.modified_by_id = request.user.id
             composing.save()
 
