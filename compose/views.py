@@ -231,22 +231,23 @@ class ComposingAPIView(APIView):
         data['created_by_id'] = request.user.id
         data['modified_by_id'] = request.user.id
         template_id = data.get('template_id')
+        articles_data = data.get('articles', [])
+        articles = []
         if 'base64_img' not in data or ',' not in data['base64_img']:
             return Response(error("Invalid or missing base64_img"))
-        file_type = ComposingTemplate.objects.get(id=template_id).file_type
-        base64_image = get_tiff(data['base64_img']) if file_type == 'TIFF' else data['base64_img']
+        template = ComposingTemplate.objects.get(id=template_id)
+        format = template.file_type
+        base64_image = tiff_compose_save(template, articles_data, format) if format == 'TIFF' else data['base64_img']
         product = save_product_image(base64_image)
-        if file_type == 'TIFF':
+        if format == 'TIFF':
             png_result = save_product_image(data['base64_img'])
         else:
             png_result = ''
-        articles_data = data.get('articles', [])
-        articles = []
         for article_data in articles_data:
             article_data['created_by_id'] = request.user.id
             article_data['modified_by_id'] = request.user.id
             try:
-                article = Article.objects.create(**article_data)
+                article = Article.objects.create(pos_index=article_data['pos_index'], name=article_data['name'], article_number=article_data['article_number'],mediaobject_id=article_data['mediaobject_id'],is_transparent=article_data['is_transparent'],scaling=article_data['scaling'],alignment=article_data['alignment'],height=article_data['height'],width=article_data['width'],z_index=article_data['z_index'],created_by_id=article_data['created_by_id'],modified_by_id=article_data['modified_by_id'])
                 articles.append(article.pk)
             except Exception as e:
                 return Response(error(str(e)))
@@ -326,21 +327,21 @@ class ComposingDetail(APIView):
             raise e
 
     def get(self, request, pk):
-        template = self.get_object(pk)
-        serializer = ComposingSerializer(template)
+        composing = self.get_object(pk)
+        serializer = ComposingSerializer(composing)
         return Response(serializer.data)
 
     def put(self, request, pk):
-        template = self.get_object(pk)
-        serializer = ComposingSerializer(template, data=request.data)
+        composing = self.get_object(pk)
+        serializer = ComposingSerializer(composing, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        template = self.get_object(pk)
-        template.delete()
+        composing = self.get_object(pk)
+        composing.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class BrandAPIView(APIView):

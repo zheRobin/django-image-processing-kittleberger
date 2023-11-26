@@ -9,29 +9,25 @@ from PIL import Image,ImageFilter
 from io import BytesIO
 import os, time, base64
 from app.util import *
-ATTRIBUTES_XPATH = ET.XPath('.//attribute')
+
 URLS_XPATH = ET.XPath('.//urls/url')
 LINKED_PRODUCTS_XPATH = ET.XPath('.//linked_products/product')
 LINKED_PRODUCT_ATTRIBUTES_XPATH = ET.XPath('.//attributes/attribute')
 VALUE_XPATH = ET.XPath('./value/text()')
 STATIC_URL = settings.STATIC_ROOT
 def convert(element):
-    attributes = {attribute.get('ukey'): VALUE_XPATH(attribute) for attribute in ATTRIBUTES_XPATH(element)}
-
+    urls = {url.get('mimetype').split('/')[1]: url.text for url in URLS_XPATH(element)}
     linked_products = [{'id': product.get('id'), 
                         'name': product.get('name'), 
                         'mfact_key': product.get('mfact_key'), 
-                        'attributes': {product_attr.get('ukey'): VALUE_XPATH(product_attr) for product_attr in LINKED_PRODUCT_ATTRIBUTES_XPATH(product)} } 
+                        'sale_countries': [country for product_attr in LINKED_PRODUCT_ATTRIBUTES_XPATH(product) if product_attr.get('ukey') == 'COUNTRIES_OF_SALE (2)' for country in VALUE_XPATH(product_attr)]} 
                        for product in LINKED_PRODUCTS_XPATH(element)]
-    urls = {url.get('mimetype'): url.text for url in URLS_XPATH(element)}
     result = {
         'id': element.get('id'), 
         'name': element.get('name'), 
+        'urls': urls,
         'linked_products': linked_products,
-        'urls': urls
     }
-
-    result.update(attributes)
     return result
 def upload(in_path, out_path):
     with open(in_path, 'rb') as f:
@@ -107,7 +103,7 @@ def compose_render(template, articles):
     articles = sorted(articles, key=lambda x: x.get('z_index', 0))
     
     for article in articles:
-        response = requests.get(article['article_link']).content
+        response = requests.get(article['render_url']).content
         if article['is_transparent'] == True or article['is_transparent']:
             media = Image.open(BytesIO(remove_background_and_inner(response)))
         else:
@@ -158,12 +154,73 @@ def compose_render(template, articles):
             background.paste(product, (left, top))
 
     buffered = BytesIO()
-    format = 'PNG' if template.file_type == 'TIFF' else template.file_type
     background.save(buffered, format=format, dpi=(template.resolution_dpi, template.resolution_dpi))
     base64_img = base64.b64encode(buffered.getvalue())
     img_data = f"data:image/{format.lower()};base64,{base64_img.decode('utf-8')}"
     return img_data
+def tiff_compose_save(template, articles, format):
+    background = Image.open(BytesIO(requests.get(template.bg_image_cdn_url).content))
+    articles = sorted(articles, key=lambda x: x.get('z_index', 0))
+    
+    for article in articles:
+        if article['tiff_url'] is None:
+            response = requests.get(article['render_url']).content
+        else:
+            response = requests.get(article['tiff_url']).content
+        if article['is_transparent'] == True or article['is_transparent']:
+            media = Image.open(BytesIO(remove(response)))
+        else:
+            media = Image.open(BytesIO(response))
 
+        if (article.get('width') is not None and
+            article.get('height') is not None and
+            isinstance(article.get('width'), (int, float)) and
+            isinstance(article.get('height'), (int, float)) and
+            media.width != 0 and media.height != 0):
+
+            ratio = min(int(article['width']) / media.width, int(article['height']) / media.height)
+            new_size = tuple(int(dim * ratio) for dim in media.size)
+        else:
+            new_size = media.size
+
+        img = media.resize(new_size, Image.LANCZOS)
+        product_bbox = img.split()[-1].filter(ImageFilter.MinFilter(3)).getbbox()
+        product = img.crop(product_bbox)
+
+        if (isinstance(article.get('left'), (int, float)) and 
+            isinstance(article.get('top'), (int, float)) and 
+            isinstance(article.get('width'), (int, float)) and
+            isinstance(article.get('height'), (int, float)) and
+            isinstance(product.width, (int, float)) and
+            isinstance(product.height, (int, float))):
+
+            left = int(article['left'] + (article['width'] - product.width) / 2)
+            top = int(article['top'] + (article['height'] - product.height) / 2)
+        else:
+            left_value = article.get('left', 0)
+            top_value = article.get('top', 0)
+
+            left = int(left_value) if left_value is not None else 0
+            top = int(top_value) if top_value is not None else 0
+
+        if template.is_shadow:
+            shadow = get_shadow(product)
+            shadow.putdata([(10, 10, 10, 10) if item[3] > 0 else item for item in shadow.getdata()])
+            shadow_left = left - (shadow.width - product.width)
+            shadow_top = top + (product.height - shadow.height)
+            background.paste(shadow, (int(shadow_left), int(shadow_top)), shadow)
+
+        if product.mode == "RGBA":
+            mask = product.split()[3]
+            background.paste(product, (left, top), mask)
+        else:
+            background.paste(product, (left, top))
+
+    buffered = BytesIO()
+    background.save(buffered, format=format, dpi=(template.resolution_dpi, template.resolution_dpi))
+    base64_img = base64.b64encode(buffered.getvalue())
+    img_data = f"data:image/{format.lower()};base64,{base64_img.decode('utf-8')}"
+    return img_data
 def conv_tiff(image_or_url):
     if urlparse(image_or_url).scheme in ['http', 'https']:
         response = requests.get(image_or_url, stream=True)

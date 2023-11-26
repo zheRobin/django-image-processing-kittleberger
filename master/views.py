@@ -14,7 +14,6 @@ from lxml import etree
 from lxml.etree import XMLSyntaxError
 from master.util import *
 from app.util import *
-import environ
 from .models import APIKey
 from .serializers import *
 from compose.serializers import *
@@ -23,7 +22,8 @@ from pymongo.errors import ConnectionFailure
 from django.http import Http404
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
-from datetime import datetime
+from django.utils import timezone
+import environ
 env = environ.Env()
 environ.Env.read_env()
 
@@ -59,7 +59,7 @@ class ParseAPIView(APIView):
     def post(self, request):
         api_key = request.POST.get('api_key')
         api_key_instance = get_object_or_404(APIKey, apikey=api_key)
-        api_key_instance.last_used = datetime.now()
+        api_key_instance.last_used = timezone.now()
         api_key_instance.save()
         file = request.FILES['file']
         filepath = default_storage.save(os.path.join('temp', file.name), ContentFile(file.read()))
@@ -136,17 +136,26 @@ class ProductFilterAPIView(APIView):
             query.append({"$or": [{"linked_products.mfact_key": regex_product}, {"linked_products.name": regex_product}]})
 
         if regex_country:
-            query.append({"1_COUNTRY": regex_country})
+            query.append({"linked_products.sale_countries": regex_country})
 
         cursor = db[file_id].find({"$and": query}).skip((page-1) * iter_limit) if query else db[file_id].find().skip((page-1) * iter_limit)
         for document in cursor:
-            cdn_urls = document.get('CDN_URLS')
+            cdn_urls = document.get('urls')
+            render_url = None
+            if cdn_urls.get('jpeg'):
+                render_url = cdn_urls['jpeg']
+            elif cdn_urls.get('png'):
+                render_url = cdn_urls['png']
+            if cdn_urls.get('tiff'):
+                tiff_url = cdn_urls['tiff']
+            else:
+                tiff_url = None
             linked_products = document.get("linked_products", [])
-            if cdn_urls and linked_products:
+            if render_url and linked_products:
                 document_id = str(document.get('_id', ''))
                 for product in linked_products:
                     if regex_product is None or regex_product.search(product.get('mfact_key', '')) or regex_product.search(product.get('name', '')):
-                        results.append({'document_id': document_id, 'article_number': product.get('mfact_key', ''), 'name': product.get('name', ''), 'cdn_urls': cdn_urls})
+                        results.append({'document_id': document_id,'mediaobject_id':product.get('id',''), 'article_number': product.get('mfact_key', ''), 'name': product.get('name', ''), 'render_url': render_url, 'tiff_url': tiff_url})
                     if len(results) == iter_limit:
                         break
             if len(results) == iter_limit:
@@ -180,7 +189,8 @@ class ComposingGenAPIView(APIView):
     def post(self, request):
         data = self.validate_data(request.data)
         template = self.get_template(data['template_id'])
-        compose = compose_render(template, data['articles'])
+        format = 'PNG' if template.file_type == 'TIFF' else template.file_type
+        compose = compose_render(template, data['articles'],format)
 
         return Response(success(compose))
     
