@@ -158,7 +158,7 @@ def compose_render(template, articles, format):
     img_data = f"data:image/{format.lower()};base64,{base64_img.decode('utf-8')}"
     return img_data
 def tiff_compose_save(template, articles, format):
-    background = Image.open(BytesIO(requests.get(template.bg_image_cdn_url).content))
+    background = Image.open(BytesIO(requests.get(template.bg_image_tiff_url).content))
     articles = sorted(articles, key=lambda x: x.get('z_index', 0))
     
     for article in articles:
