@@ -21,6 +21,7 @@ from accounts.models import User
 from pymongo.errors import ConnectionFailure
 from django.http import Http404
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 import environ
@@ -29,16 +30,22 @@ environ.Env.read_env()
 
 class APIKeyAPIView(APIView):
     permission_classes = (IsAuthenticated, IsAdminUser)
+
     def post(self, request):
         try:
             user = User.objects.get(pk=request.user.pk)
             name = request.data['name']
-            APIKey.objects.create(user=user, name = name)
+            APIKey.objects.create(user=user, name=name)
             api_keys = APIKey.objects.all()
             data = APIKeySerializer(api_keys, many=True).data
             return Response(success(data))
+
         except User.DoesNotExist:
-            return Response(error( "Bad request"))
+            return Response(error("Bad request"))
+        except ValidationError as ve:
+            return Response(error(str(ve)))
+        except IntegrityError:
+            return Response(error("Name field must be unique"))
 
     def get(self, request):
         try:

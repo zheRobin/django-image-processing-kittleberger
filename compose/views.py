@@ -3,7 +3,7 @@ from django.http import StreamingHttpResponse
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 import uuid
 from .models import *
 from .serializers import *
@@ -23,7 +23,7 @@ environ.Env.read_env()
 
 
 class TemplateAPIView(APIView):
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (IsAuthenticated,IsAdminUser)
     def post(self, request):
         try:
             data=request.POST.dict()

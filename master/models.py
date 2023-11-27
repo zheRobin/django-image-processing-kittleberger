@@ -9,7 +9,7 @@ class Document(models.Model):
     upload_date = models.DateTimeField(auto_now_add=True)
 class APIKey(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=100, unique=True)
     apikey = models.CharField(max_length=100,default=generate_api_key,unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     last_used = models.DateTimeField(null=True)
