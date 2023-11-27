@@ -17,4 +17,5 @@ urlpatterns = [
     path('product/', ComposingAPIView.as_view()),
     path('articles/<int:pk>/', ComposingArticleTemplateDetail.as_view()),
     path('product/<int:pk>/', ComposingDetail.as_view()),
+    path('pagedata/', PageDataAPIView.as_view()),
 ]

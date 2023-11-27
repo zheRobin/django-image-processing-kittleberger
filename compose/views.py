@@ -414,3 +414,18 @@ class ArticleAPIView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class PageDataAPIView(APIView):
+    def get(self, request):       
+        brands = Brand.objects.all()
+        applications = Application.objects.all()
+        countries = Country.objects.all()
+
+        brand_serializer = BrandSerializer(brands, many=True)
+        application_serializer = ApplicationSerializer(applications, many=True)
+        country_serializer = CountrySerializer(countries, many=True)
+        response_data = {
+            'brands': brand_serializer.data,
+            'applications': application_serializer.data,
+            'country_list':country_serializer.data
+        }
+        return Response(success(response_data))
