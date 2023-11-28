@@ -319,9 +319,17 @@ class RefreshAPIView(APIView):
     def post(self, request, format=None):
         data = request.data
         template_id = data.get('template_id')
+        if not template_id:
+            return Response(error("Invalid or missing template_id"))
         articles_data = data.get('articles', [])
-        template = ComposingTemplate.objects.get(id=template_id)
-        base64_image = refresh_compose(template, articles_data)
+        try:
+            template = ComposingTemplate.objects.get(id=template_id)
+        except ComposingTemplate.DoesNotExist:
+            return Response(error("Invalid or missing template_id"))
+        try:
+            base64_image = refresh_compose(template, articles_data)
+        except Exception as e:
+            return Response(server_error(str(e)))
         return Response(success(base64_image))
 class ComposingArticleTemplateDetail(APIView):
     def get_object(self, pk):
