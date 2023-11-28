@@ -274,7 +274,8 @@ class ComposingAPIView(APIView):
         data['modified_by_id'] = request.user.id
         template_id = data.get('template_id')
         composing = Composing.objects.get(id = data['id'])
-        if data['base64_img']:
+        img_data = data.get('base64_img', None)
+        if img_data is not None and img_data.startswith(f"data:image"):
             template = ComposingTemplate.objects.get(id=template_id)
             format = template.file_type
             base64_image = tiff_compose_save(template, articles_data, format) if format == 'TIFF' else data['base64_img']
