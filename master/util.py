@@ -220,6 +220,66 @@ def tiff_compose_save(template, articles, format):
     base64_img = base64.b64encode(buffered.getvalue())
     img_data = f"data:image/{format.lower()};base64,{base64_img.decode('utf-8')}"
     return img_data
+def refresh_compose(template, articles):
+    background = Image.open(BytesIO(requests.get(template.bg_image_cdn_url).content))
+    articles = sorted(articles, key=lambda x: x.get('z_index', 0))
+    
+    for article in articles:
+        response = requests.get(article['render_url']).content
+        if article['is_transparent'] == True or article['is_transparent']:
+            media = Image.open(BytesIO(remove(response)))
+        else:
+            media = Image.open(BytesIO(response))
+
+        if (article.get('width') is not None and
+            article.get('height') is not None and
+            isinstance(article.get('width'), (int, float)) and
+            isinstance(article.get('height'), (int, float)) and
+            media.width != 0 and media.height != 0):
+
+            ratio = min(int(article['width']) / media.width, int(article['height']) / media.height)
+            new_size = tuple(int(dim * ratio) for dim in media.size)
+        else:
+            new_size = media.size
+
+        img = media.resize(new_size, Image.LANCZOS)
+        product_bbox = img.split()[-1].filter(ImageFilter.MinFilter(3)).getbbox()
+        product = img.crop(product_bbox)
+
+        if (isinstance(article.get('left'), (int, float)) and 
+            isinstance(article.get('top'), (int, float)) and 
+            isinstance(article.get('width'), (int, float)) and
+            isinstance(article.get('height'), (int, float)) and
+            isinstance(product.width, (int, float)) and
+            isinstance(product.height, (int, float))):
+
+            left = int(article['left'] + (article['width'] - product.width) / 2)
+            top = int(article['top'] + (article['height'] - product.height) / 2)
+        else:
+            left_value = article.get('left', 0)
+            top_value = article.get('top', 0)
+
+            left = int(left_value) if left_value is not None else 0
+            top = int(top_value) if top_value is not None else 0
+
+        if template.is_shadow:
+            shadow = get_shadow(product)
+            shadow.putdata([(10, 10, 10, 10) if item[3] > 0 else item for item in shadow.getdata()])
+            shadow_left = left - (shadow.width - product.width)
+            shadow_top = top + (product.height - shadow.height)
+            background.paste(shadow, (int(shadow_left), int(shadow_top)), shadow)
+
+        if product.mode == "RGBA":
+            mask = product.split()[3]
+            background.paste(product, (left, top), mask)
+        else:
+            background.paste(product, (left, top))
+
+    buffered = BytesIO()
+    background.save(buffered, format=format, dpi=(template.resolution_dpi, template.resolution_dpi))
+    base64_img = base64.b64encode(buffered.getvalue())
+    img_data = f"data:image/png;base64,{base64_img.decode('utf-8')}"
+    return img_data
 def conv_tiff(image_or_url):
     if urlparse(image_or_url).scheme in ['http', 'https']:
         response = requests.get(image_or_url, stream=True)

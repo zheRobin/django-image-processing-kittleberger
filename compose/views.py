@@ -268,41 +268,42 @@ class ComposingAPIView(APIView):
             return Response(error(str(e)))
         
         return Response(created(self, product))
+    
     def put(self, request, format=None):
         data = request.data
         data['modified_by_id'] = request.user.id
         template_id = data.get('template_id')
-        articles_data = data.get('articles', [])
-        articles = []
-        if 'base64_img' not in data or ',' not in data['base64_img']:
-            return Response(error("Invalid or missing base64_img"))
-        template = ComposingTemplate.objects.get(id=template_id)
-        format = template.file_type
-        base64_image = tiff_compose_save(template, articles_data, format) if format == 'TIFF' else data['base64_img']
-        product = save_product_image(base64_image)
-        if format == 'TIFF':
-            png_result = save_product_image(data['base64_img'])
-        else:
-            png_result = ''
-        articles_data = data.get('articles', [])
-        articles = []
-        for article_data in articles_data:
-            article_data['modified_by_id'] = request.user.id
+        composing = Composing.objects.get(id = data['id'])
+        if data['base64_img']:
+            template = ComposingTemplate.objects.get(id=template_id)
+            format = template.file_type
+            base64_image = tiff_compose_save(template, articles_data, format) if format == 'TIFF' else data['base64_img']
+            product = save_product_image(base64_image)
+            if format == 'TIFF':
+                png_result = save_product_image(data['base64_img'])
+            else:
+                png_result = ''
+            articles_data = data.get('articles', [])
+            articles = []
+            for article_data in articles_data:
+                article_data['modified_by_id'] = request.user.id
+                try:
+                    article, created = Article.objects.update_or_create(
+                        id=article_data['id'], defaults=article_data)
+                    articles.append(article.pk)
+                except Article.DoesNotExist:
+                    return Response(error('Article with id does not exist.'))
+                except Exception as e:
+                    return Response(error(str(e)))
             try:
-                article, created = Article.objects.update_or_create(
-                    id=article_data['id'], defaults=article_data)
-                articles.append(article.pk)
-            except Article.DoesNotExist:
-                return Response(error('Article with id does not exist.'))
+                composing.template_id = data.get('template_id', composing.template_id)
+                composing.cdn_url = product
+                composing.png_result = png_result
+                composing.articles.set(articles)
             except Exception as e:
                 return Response(error(str(e)))
-        
         try:
-            composing = Composing.objects.get(id = data['id'])
             composing.name = data.get('name', composing.name)
-            composing.template_id = data.get('template_id', composing.template_id)
-            composing.cdn_url = product
-            composing.png_result = png_result
             composing.modified_by_id = request.user.id
             composing.save()
 
@@ -312,6 +313,14 @@ class ComposingAPIView(APIView):
             return Response(error(str(e)))
         
         return Response(updated(self, product))  
+class RefreshAPIView(APIView):
+    def post(self, request, format=None):
+        data = request.data
+        template_id = data.get('template_id')
+        articles_data = data.get('articles', [])
+        template = ComposingTemplate.objects.get(id=template_id)
+        base64_image = refresh_compose(template, articles_data)
+        return Response(success(base64_image))
 class ComposingArticleTemplateDetail(APIView):
     def get_object(self, pk):
         try:
