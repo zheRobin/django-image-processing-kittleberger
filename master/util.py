@@ -276,7 +276,7 @@ def refresh_compose(template, articles):
             background.paste(product, (left, top))
 
     buffered = BytesIO()
-    background.save(buffered, format=format, dpi=(template.resolution_dpi, template.resolution_dpi))
+    background.save(buffered, 'PNG', dpi=(template.resolution_dpi, template.resolution_dpi))
     base64_img = base64.b64encode(buffered.getvalue())
     img_data = f"data:image/png;base64,{base64_img.decode('utf-8')}"
     return img_data
