@@ -311,8 +311,9 @@ class ComposingAPIView(APIView):
             return Response(error('Composing with id does not exist.'))
         except Exception as e:
             return Response(error(str(e)))
-        
-        return Response(updated(self, product))  
+        composing = Composing.objects.get(id = data['id'])
+        serializer = ComposingSerializer(composing)
+        return Response(updated(self, serializer.data))  
 class RefreshAPIView(APIView):
     def post(self, request, format=None):
         data = request.data
