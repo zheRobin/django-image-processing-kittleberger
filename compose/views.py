@@ -308,14 +308,19 @@ class ComposingAPIView(APIView):
                 png_result = ''
             articles_data = data.get('articles', [])
             articles = []
+            allowable_fields = ['id', 'pos_index', 'name', 'article_number', 'mediaobject_id', 'scaling', 'alignment', 'height', 'width', 'z_index', 'created_by_id', 'modified_by_id']
             for article_data in articles_data:
                 article_data['modified_by_id'] = request.user.id
+                article_data = {field: value for field, value in article_data.items() if field in allowable_fields}
                 try:
-                    article, created = Article.objects.update_or_create(
-                        id=article_data['id'], defaults=article_data)
+                    if 'id' in article_data and Article.objects.filter(id=article_data['id']).exists():
+                        article, created = Article.objects.update_or_create(
+                            id=article_data['id'], defaults=article_data)
+                    else:
+                        article_data['created_by_id'] = request.user.id
+                        article = Article.objects.create(**article_data)
+                    
                     articles.append(article.pk)
-                except Article.DoesNotExist:
-                    return Response(error('Article with id does not exist.'))
                 except Exception as e:
                     return Response(error(str(e)))
             try:
