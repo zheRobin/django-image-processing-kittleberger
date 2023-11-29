@@ -32,12 +32,18 @@ class SetPreviewImageAPIView(APIView):
             template = ComposingTemplate.objects.get(pk=template_id)
         except ComposingTemplate.DoesNotExist:
             return Response(error("Template does not exist"))
-        base64_image = data.get('base64_img', None)
-        if not base64_image:
-            return Response(error("Base64 image is required"))
-        result = save_preview_image(base64_image)
-        template.preview_image_cdn_url = result
-        template.save()
+        preview_img = data.get('preview_img', None)
+        if not preview_img:
+            return Response(error("Image Content is required"))
+        if preview_img.startswith('http'):
+            template.preview_image_cdn_url = preview_img
+            template.save()
+        if preview_img.startswith('data:image'):
+            result = save_preview_image(preview_img)
+            template.preview_image_cdn_url = result
+            template.save()
+        else:
+            return Response(error("Image Content is invalid"))
         return Response(success(template.preview_image_cdn_url))
 class TemplateAPIView(APIView):
     permission_classes = (IsAuthenticated,IsAdminUser)
