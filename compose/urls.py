@@ -19,4 +19,5 @@ urlpatterns = [
     path('product/<int:pk>/', ComposingDetail.as_view()),
     path('pagedata/', PageDataAPIView.as_view()),
     path('refresh/', RefreshAPIView.as_view()),
+    path('setpreview/', SetPreviewImageAPIView.as_view()),
 ]

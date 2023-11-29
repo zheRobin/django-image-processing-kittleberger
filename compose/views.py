@@ -21,7 +21,24 @@ environ.Env.read_env()
 
 # Create your views here.
 
-
+class SetPreviewImageAPIView(APIView):
+    # permission_classes = (IsAuthenticated,IsAdminUser)
+    def post(self, request, format = None):
+        data = request.data
+        template_id = data.get('template_id', None)
+        if not template_id:
+            return Response(error("Template id is required"))
+        try:
+            template = ComposingTemplate.objects.get(pk=template_id)
+        except ComposingTemplate.DoesNotExist:
+            return Response(error("Template does not exist"))
+        base64_image = data.get('base64_img', None)
+        if not base64_image:
+            return Response(error("Base64 image is required"))
+        result = save_preview_image(base64_image)
+        template.preview_image_cdn_url = result
+        template.save()
+        return Response(success(template.preview_image_cdn_url))
 class TemplateAPIView(APIView):
     permission_classes = (IsAuthenticated,IsAdminUser)
     def post(self, request):

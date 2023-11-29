@@ -60,6 +60,19 @@ def resize_save_img(img, size, type, output_path, resolution_dpi):
     output_img.save(local_path, type.upper(), dpi=(resolution_dpi, resolution_dpi))
     result = upload(local_path, output_path+img_name)
     return result
+def save_preview_image(base64_img):
+    img_format = base64_img.split(';')[0].split('/')[1]
+    img_name = str(int(time.time())) + '.' + img_format
+    local_path = os.path.join(STATIC_URL, img_name)
+    output_path = 'mediafiles/preview_images/'+img_name
+    if base64_img and ',' in base64_img:
+        img_data = base64.b64decode(base64_img.split(',')[1])
+    else:
+        return Response(error("Invalid base64_img"))
+    with open(local_path, 'wb') as f:
+        f.write(img_data)
+    result = upload(local_path, output_path)
+    return result
 def get_shadow(img):
     img_alpha = img.split()[-1].filter(ImageFilter.MinFilter(3))
     img_shape = Image.new('RGBA', img_alpha.size)
