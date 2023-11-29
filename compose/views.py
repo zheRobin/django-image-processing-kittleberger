@@ -22,7 +22,7 @@ environ.Env.read_env()
 # Create your views here.
 
 class SetPreviewImageAPIView(APIView):
-    # permission_classes = (IsAuthenticated,IsAdminUser)
+    permission_classes = (IsAuthenticated,IsAdminUser)
     def post(self, request, format = None):
         data = request.data
         template_id = data.get('template_id', None)
@@ -38,7 +38,7 @@ class SetPreviewImageAPIView(APIView):
         if preview_img.startswith('http'):
             template.preview_image_cdn_url = preview_img
             template.save()
-        if preview_img.startswith('data:image'):
+        elif preview_img.startswith('data:image'):
             result = save_preview_image(preview_img)
             template.preview_image_cdn_url = result
             template.save()
