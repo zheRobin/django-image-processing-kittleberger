@@ -419,7 +419,8 @@ class ArticleAPIView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 class PageDataAPIView(APIView):
-    def get(self, request):       
+    permission_classes = (IsAuthenticated,)
+    def get(self, request):
         brands = Brand.objects.all()
         applications = Application.objects.all()
         countries = Country.objects.all()
@@ -434,6 +435,8 @@ class PageDataAPIView(APIView):
         }
         return Response(success(response_data))
     def post(self, request):
+        if request.user.is_staff is False:
+            return Response(error("You are not authorized to perform this action"))
         data = request.data
         host = data.get('host')
         value = data.get('value')
@@ -442,18 +445,32 @@ class PageDataAPIView(APIView):
         try:
             if host == 'brand':
                 Brand.objects.create(name = value)
-                return Response(success("Brand created"))
-            if host == 'application':
+            elif host == 'application':
                 Application.objects.create(name = value)
-                return Response(success("Application created"))
-            if host == 'country':
+            elif host == 'country':
                 Country.objects.create(name = value)
-                return Response(success("Country created"))
+            else:
+                return Response(error("Invalid host"))
         except IntegrityError:
             return Response(error("Name field must be unique"))
         except Exception as e:
             return Response(error(str(e)))
+        brands = Brand.objects.all()
+        applications = Application.objects.all()
+        countries = Country.objects.all()
+
+        brand_serializer = BrandSerializer(brands, many=True)
+        application_serializer = ApplicationSerializer(applications, many=True)
+        country_serializer = CountrySerializer(countries, many=True)
+        response_data = {
+            'brands': brand_serializer.data,
+            'applications': application_serializer.data,
+            'country_list':country_serializer.data
+        }
+        return Response(success(response_data))
     def put(self, request):
+        if request.user.is_staff is False:
+            return Response(error("You are not authorized to perform this action"))
         data = request.data
         host = data.get('host')
         pk = data.get('pk')
@@ -465,17 +482,17 @@ class PageDataAPIView(APIView):
                 brand = Brand.objects.get(pk=pk)
                 brand.name = value
                 brand.save()
-                return Response(success("Brand updated"))
-            if host == 'application':
+            elif host == 'application':
                 application = Application.objects.get(pk=pk)
                 application.name = value
                 application.save()
-                return Response(success("Application updated"))
-            if host == 'country':
+            elif host == 'country':
                 country = Country.objects.get(pk=pk)
                 country.name = value
                 country.save()
-                return Response(success("Country updated"))
+            else:
+                return Response(error("Invalid host"))
+
         except Brand.DoesNotExist:
             return Response(error("Brand does not exist"))
         except Application.DoesNotExist:
@@ -484,7 +501,22 @@ class PageDataAPIView(APIView):
             return Response(error("Country does not exist"))
         except Exception as e:
             return Response(error(str(e)))
+        brands = Brand.objects.all()
+        applications = Application.objects.all()
+        countries = Country.objects.all()
+
+        brand_serializer = BrandSerializer(brands, many=True)
+        application_serializer = ApplicationSerializer(applications, many=True)
+        country_serializer = CountrySerializer(countries, many=True)
+        response_data = {
+            'brands': brand_serializer.data,
+            'applications': application_serializer.data,
+            'country_list':country_serializer.data
+        }
+        return Response(success(response_data))
     def delete(self, request):
+        if request.user.is_staff is False:
+            return Response(error("You are not authorized to perform this action"))
         data = request.data
         host = data.get('host')
         pk = data.get('pk')
@@ -494,15 +526,14 @@ class PageDataAPIView(APIView):
             if host == 'brand':
                 brand = Brand.objects.get(pk=pk)
                 brand.delete()
-                return Response(success("Brand deleted"))
-            if host == 'application':
+            elif host == 'application':
                 application = Application.objects.get(pk=pk)
                 application.delete()
-                return Response(success("Application deleted"))
-            if host == 'country':
+            elif host == 'country':
                 country = Country.objects.get(pk=pk)
                 country.delete()
-                return Response(success("Country deleted"))
+            else:
+                return Response(error("Invalid host"))
         except Brand.DoesNotExist:
             return Response(error("Brand does not exist"))
         except Application.DoesNotExist:
@@ -511,3 +542,16 @@ class PageDataAPIView(APIView):
             return Response(error("Country does not exist"))
         except Exception as e:
             return Response(error(str(e)))
+        brands = Brand.objects.all()
+        applications = Application.objects.all()
+        countries = Country.objects.all()
+
+        brand_serializer = BrandSerializer(brands, many=True)
+        application_serializer = ApplicationSerializer(applications, many=True)
+        country_serializer = CountrySerializer(countries, many=True)
+        response_data = {
+            'brands': brand_serializer.data,
+            'applications': application_serializer.data,
+            'country_list':country_serializer.data
+        }
+        return Response(success(response_data))
