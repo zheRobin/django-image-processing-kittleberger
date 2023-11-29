@@ -113,25 +113,24 @@ class TemplateAPIView(APIView):
                 template.application.set(app_ids)
 
             if 'article_placements' in data:
-                max_pos_index = ComposingArticleTemplate.objects.filter(id__in=template.article_placements.all().values_list('id', flat=True)).aggregate(Max('pos_index'))['pos_index__max'] or 0
+                existing_placements = ComposingArticleTemplate.objects.filter(id__in=template.article_placements.all().values_list('id', flat=True))
+                existing_placements.delete()
+                pos_index = 1
                 for placement in json.loads(data['article_placements']):
-                    if 'id' in placement and ComposingArticleTemplate.objects.filter(id=placement['id']).exists():
-                        placement_obj = ComposingArticleTemplate.objects.get(id=placement['id'])
-                        placement_obj.pos_index = placement.get('pos_index', placement_obj.pos_index)
-                        placement_obj.position_x = placement.get('position_x', placement_obj.position_x)
-                        placement_obj.position_y = placement.get('position_y', placement_obj.position_y)
-                        placement_obj.height = placement.get('height', placement_obj.height)
-                        placement_obj.width = placement.get('width', placement_obj.width)
-                        placement_obj.z_index = placement.get('z_index', placement_obj.z_index)
-                        
-                        placement_obj.modified_by_id = request.user.pk
-                        placement_obj.save()
-                    else:
-                        max_pos_index += 1
-                        placement_obj = ComposingArticleTemplate.objects.create(pos_index = max_pos_index,position_x=placement['position_x'], position_y=placement['position_y'], height= placement['height'], width= placement['width'], z_index = placement['z_index'],  created_by_id=request.user.pk, modified_by_id=request.user.pk)
+                    placement_obj = ComposingArticleTemplate.objects.create(
+                        pos_index = pos_index,
+                        position_x = placement['position_x'], 
+                        position_y = placement['position_y'], 
+                        height = placement['height'], 
+                        width = placement['width'], 
+                        z_index = placement ['z_index'], 
+                        created_by_id = request.user.pk, 
+                        modified_by_id = request.user.pk
+                    )
+                    
                     placements_ids.append(placement_obj.pk)
+                    pos_index += 1
                 template.article_placements.set(placements_ids)
-
             template.save()
 
             serializer = ComposingTemplateSerializer(template)
