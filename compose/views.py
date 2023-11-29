@@ -1,15 +1,13 @@
-from django.db.models import Count, Q, Max
+from django.db.models import Count, Q
 from django.http import StreamingHttpResponse
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
-import uuid
 from .models import *
 from .serializers import *
 from rest_framework.pagination import LimitOffsetPagination
-from django.core.exceptions import ValidationError
-from rest_framework.exceptions import NotFound
+from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from app.util import *
 from master.util import *
@@ -408,46 +406,6 @@ class ComposingDetail(APIView):
         composing = self.get_object(pk)
         composing.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-class BrandAPIView(APIView):
-    def get(self, request):
-        brands = Brand.objects.all()
-        serializer = BrandSerializer(brands, many=True)
-        return Response(serializer.data)
-
-    def post(self, request):
-        serializer = BrandSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-class ApplicationAPIView(APIView):
-    def get(self, request):
-        applications = Application.objects.all()
-        serializer = ApplicationSerializer(applications, many=True)
-        return Response(serializer.data)
-
-    def post(self, request):
-        serializer = ApplicationSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-class CountryAPIView(APIView):
-    def get(self, request):
-        countries = Country.objects.all()
-        serializer = CountrySerializer(countries, many=True)
-        return Response(serializer.data)
-
-    def post(self, request):
-        serializer = CountrySerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 class ArticleAPIView(APIView):
     def get(self, request):
         articles = Article.objects.all()
@@ -475,3 +433,81 @@ class PageDataAPIView(APIView):
             'country_list':country_serializer.data
         }
         return Response(success(response_data))
+    def post(self, request):
+        data = request.data
+        host = data.get('host')
+        value = data.get('value')
+        if not host or not value:
+            return Response(error("Invalid or missing host or value id"))
+        try:
+            if host == 'brand':
+                Brand.objects.create(name = value)
+                return Response(success("Brand created"))
+            if host == 'application':
+                Application.objects.create(name = value)
+                return Response(success("Application created"))
+            if host == 'country':
+                Country.objects.create(name = value)
+                return Response(success("Country created"))
+        except IntegrityError:
+            return Response(error("Name field must be unique"))
+        except Exception as e:
+            return Response(error(str(e)))
+    def put(self, request):
+        data = request.data
+        host = data.get('host')
+        pk = data.get('pk')
+        value = data.get('value')
+        if not host or not value:
+            return Response(error("Invalid or missing host or value id"))
+        try:
+            if host == 'brand':
+                brand = Brand.objects.get(pk=pk)
+                brand.name = value
+                brand.save()
+                return Response(success("Brand updated"))
+            if host == 'application':
+                application = Application.objects.get(pk=pk)
+                application.name = value
+                application.save()
+                return Response(success("Application updated"))
+            if host == 'country':
+                country = Country.objects.get(pk=pk)
+                country.name = value
+                country.save()
+                return Response(success("Country updated"))
+        except Brand.DoesNotExist:
+            return Response(error("Brand does not exist"))
+        except Application.DoesNotExist:
+            return Response(error("Application does not exist"))
+        except Country.DoesNotExist:
+            return Response(error("Country does not exist"))
+        except Exception as e:
+            return Response(error(str(e)))
+    def delete(self, request):
+        data = request.data
+        host = data.get('host')
+        pk = data.get('pk')
+        if not host:
+            return Response(error("Invalid or missing host id"))
+        try:
+            if host == 'brand':
+                brand = Brand.objects.get(pk=pk)
+                brand.delete()
+                return Response(success("Brand deleted"))
+            if host == 'application':
+                application = Application.objects.get(pk=pk)
+                application.delete()
+                return Response(success("Application deleted"))
+            if host == 'country':
+                country = Country.objects.get(pk=pk)
+                country.delete()
+                return Response(success("Country deleted"))
+        except Brand.DoesNotExist:
+            return Response(error("Brand does not exist"))
+        except Application.DoesNotExist:
+            return Response(error("Application does not exist"))
+        except Country.DoesNotExist:
+            return Response(error("Country does not exist"))
+        except Exception as e:
+            return Response(error(str(e)))
