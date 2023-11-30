@@ -197,6 +197,7 @@ class ComposingTemplateDetail(APIView):
         return Response(serializer.data)
 
 class ComposingTemplateFilter(APIView):
+    permission_classes = (IsAuthenticated,)
     def post(self, request, format=None):
         try:
             limit = int(request.data.get('limit', 10))
