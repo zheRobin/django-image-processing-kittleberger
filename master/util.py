@@ -173,12 +173,12 @@ def compose_render(template, articles, format):
 def tiff_compose_save(template, articles, format):
     background = Image.open(BytesIO(requests.get(template.bg_image_tiff_url).content))
     articles = sorted(articles, key=lambda x: x.get('z_index', 0))
-    
     for article in articles:
-        if article['tiff_url'] is None:
+        tiff_url = article.get('tiff_url', None)
+        if tiff_url is None or tiff_url == '':
             response = requests.get(article['render_url']).content
         else:
-            response = requests.get(article['tiff_url']).content
+            response = requests.get(tiff_url).content
         if article['is_transparent'] == True or article['is_transparent']:
             media = Image.open(BytesIO(remove(response)))
         else:

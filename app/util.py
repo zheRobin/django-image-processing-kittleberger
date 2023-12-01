@@ -1,10 +1,9 @@
 from django.core.files.storage import default_storage
 from rest_framework import status
-import boto3
+import boto3, environ, mimetypes
 from botocore.config import Config
 from botocore.exceptions import NoCredentialsError
 from rest_framework.response import Response
-import environ
 env = environ.Env()
 environ.Env.read_env()
 def success(data):
@@ -89,7 +88,8 @@ def get_s3_config():
 def s3_upload(file, path):
     s3_client, s3_bucket, s3_endpoint = get_s3_config(), env('S3_BUCKET_NAME'), env('S3_ENDPOINT_URL')
     try:
-        s3_client.upload_fileobj(file, s3_bucket, path, ExtraArgs={'ACL':'public-read'})
+        content_type = mimetypes.guess_type(path)[0]
+        s3_client.upload_fileobj(file, s3_bucket, path, ExtraArgs={'ACL':'public-read','ContentType': content_type})
     except NoCredentialsError:
         return Response(error("No AWS credentials found"))
     return s3_endpoint + path

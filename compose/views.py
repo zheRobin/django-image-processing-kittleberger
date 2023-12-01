@@ -294,6 +294,7 @@ class ComposingAPIView(APIView):
         data = request.data
         data['modified_by_id'] = request.user.id
         template_id = data.get('template_id')
+        articles_data = data.get('articles', [])    
         composing = Composing.objects.get(id = data['id'])
         img_data = data.get('base64_img', None)
         if img_data is not None and img_data.startswith(f"data:image"):
@@ -305,7 +306,6 @@ class ComposingAPIView(APIView):
                 png_result = save_product_image(data['base64_img'])
             else:
                 png_result = ''
-            articles_data = data.get('articles', [])
             articles = []
             allowable_fields = ['id', 'pos_index', 'name', 'article_number', 'mediaobject_id', 'scaling', 'alignment', 'height', 'width', 'z_index', 'created_by_id', 'modified_by_id']
             for article_data in articles_data:

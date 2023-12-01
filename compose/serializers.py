@@ -57,7 +57,7 @@ class ArticleSerializer(serializers.ModelSerializer):
         document = db[file_id].find_one({'id': obj.mediaobject_id})
         if document:
             cdn_urls = document.get('urls', {})
-            return cdn_urls.get('tiff')
+            return cdn_urls.get('tiff') or ''
         
 class ComposingSerializer(serializers.ModelSerializer):
     template = ComposingTemplateSerializer()
