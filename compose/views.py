@@ -50,8 +50,8 @@ class TemplateAPIView(APIView):
             data=request.POST.dict()
             if int(data['resolution_width'])*int(data['resolution_height'])>=10000000:
                 return Response(error("Image resolution must be under 10M pixel"))            
-            resolution_dpi_mapping = {"PNG": 144, "JPEG": 144, "TIFF": 300}
-            resolution_dpi = resolution_dpi_mapping.get(data['type'], 144)
+            resolution_dpi_mapping = {"PNG": 72, "JPEG": 72, "TIFF": 300}
+            resolution_dpi = resolution_dpi_mapping.get(data['type'], 72)
             if 'preview_image' in request.FILES:
                 preview_image = request.FILES['preview_image']
                 preview_image_cdn_url = resize_save_img(preview_image, (400,int(400*int(data['resolution_height'])/int(data['resolution_width']))),'JPEG','mediafiles/preview_images/',resolution_dpi)
@@ -267,13 +267,10 @@ class ComposingAPIView(APIView):
         if 'base64_img' not in data or ',' not in data['base64_img']:
             return Response(error("Invalid or missing base64_img"))
         template = ComposingTemplate.objects.get(id=template_id)
-        format = template.file_type
-        base64_image = tiff_compose_save(template, articles_data, format) if format == 'TIFF' else data['base64_img']
+        is_save = True
+        base64_image = compose_render(template, articles_data, is_save)
         product = save_product_image(base64_image)
-        if format == 'TIFF':
-            png_result = save_product_image(data['base64_img'])
-        else:
-            png_result = ''
+        png_result = save_product_image(data['base64_img']) if format == 'TIFF' else ''
         for article_data in articles_data:
             article_data['created_by_id'] = request.user.id
             article_data['modified_by_id'] = request.user.id
@@ -299,13 +296,10 @@ class ComposingAPIView(APIView):
         img_data = data.get('base64_img', None)
         if img_data is not None and img_data.startswith(f"data:image"):
             template = ComposingTemplate.objects.get(id=template_id)
-            format = template.file_type
-            base64_image = tiff_compose_save(template, articles_data, format) if format == 'TIFF' else data['base64_img']
+            is_save = True
+            base64_image = compose_render(template, articles_data, is_save)
             product = save_product_image(base64_image)
-            if format == 'TIFF':
-                png_result = save_product_image(data['base64_img'])
-            else:
-                png_result = ''
+            png_result = save_product_image(data['base64_img']) if format == 'TIFF' else ''
             articles = []
             allowable_fields = ['id', 'pos_index', 'name', 'article_number', 'mediaobject_id', 'scaling', 'alignment', 'height', 'width', 'z_index', 'created_by_id', 'modified_by_id']
             for article_data in articles_data:
@@ -353,7 +347,8 @@ class RefreshAPIView(APIView):
         except ComposingTemplate.DoesNotExist:
             return Response(error("Invalid or missing template_id"))
         try:
-            base64_image = refresh_compose(template, articles_data)
+            is_save = False
+            base64_image = compose_render(template, articles_data, is_save)
         except Exception as e:
             return Response(server_error(str(e)))
         return Response(success(base64_image))
