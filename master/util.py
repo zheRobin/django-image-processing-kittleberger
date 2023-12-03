@@ -77,14 +77,14 @@ def get_shadow(img):
     img_alpha = img.split()[-1].filter(ImageFilter.MinFilter(3))
     img_shape = Image.new('RGBA', img_alpha.size)
     img_shape.putalpha(img_alpha)
-    segmented = Image.new('RGBA', (img_shape.size[0], img_shape.size[1]//4))
-    segmented.paste(img_shape, (0, -(img_shape.size[1]//4)*3))
-    c = 1 + segmented.height / segmented.width
+    segmented = Image.new('RGBA', (img_shape.size[0], img_shape.size[1]*2//5))
+    segmented.paste(img_shape, (0, -(img_shape.size[1]//5)*3))
+    c = 1.1 + segmented.height / segmented.width
     px = (segmented.width/20)*(img.height/img.width)
     py = segmented.height*0.08
 
     shadow = segmented.transform(segmented.size, method=Image.AFFINE, data=[c, -0.8, -px, 0, 1.1, -py], resample=Image.BICUBIC)
-    shadow = shadow.resize((int(shadow.width*c), shadow.height)).filter(ImageFilter.GaussianBlur(radius=3))
+    shadow = shadow.resize((int(shadow.width*c*3/4), shadow.height)).filter(ImageFilter.GaussianBlur(radius=3))
     return shadow
 def save_product_image(base64_img):
     img_format = base64_img.split(';')[0].split('/')[1]
@@ -102,7 +102,7 @@ def save_product_image(base64_img):
 
 def remove_background_and_inner(input_image_data):
     input_img = cv2.imdecode(np.frombuffer(input_image_data, np.uint8), cv2.IMREAD_UNCHANGED)
-    removed_bg_img = remove(input_img)
+    removed_bg_img = remove(input_img, alpha_matting=True, alpha_matting_foreground_threshold=0,alpha_matting_background_threshold=100, alpha_matting_erode_size=100,bgcolor=(255, 255, 255, 255))
     gray_img = cv2.cvtColor(removed_bg_img, cv2.COLOR_BGR2GRAY)
     blur_img = cv2.GaussianBlur(gray_img, (15, 15), 0)
     _, thresh_img = cv2.threshold(blur_img, 230, 255, cv2.THRESH_BINARY_INV)
@@ -111,15 +111,17 @@ def remove_background_and_inner(input_image_data):
     _, output_img_data = cv2.imencode('.png', result_image)
     return output_img_data.tobytes()
 def compose_render(template, articles, is_save):
-    bg_url= template.bg_image_tiff_url if template.file_type == 'TIFF' and template.bg_image_tiff_url is not None else template.bg_image_url
+    bg_url= template.bg_image_tiff_url if template.file_type == 'TIFF' and template.bg_image_tiff_url is not None else template.bg_image_cdn_url
     background = Image.open(BytesIO(requests.get(bg_url).content))
     articles = sorted(articles, key=lambda x: x.get('z_index', 0))
     
     for article in articles:
-        url = article['tiff_url'] if template.file_type == 'TIFF' and article['tiff_url'] is not None else article['render_url']
+        url = article['tiff_url'] if template.file_type == 'TIFF' and article.get('tiff_url',None) is not None else article['render_url']
         response = requests.get(url).content
         if article['is_transparent'] == True or article['is_transparent']:
-            media = Image.open(BytesIO(remove_background_and_inner(response)))
+            img = Image.open(BytesIO(remove_background_and_inner(response)))
+            product_bbox = img.split()[-1].filter(ImageFilter.MinFilter(3)).getbbox()
+            media = img.crop(product_bbox)
         else:
             media = Image.open(BytesIO(response))
 
@@ -128,15 +130,13 @@ def compose_render(template, articles, is_save):
             isinstance(article.get('width'), (int, float)) and
             isinstance(article.get('height'), (int, float)) and
             media.width != 0 and media.height != 0):
-
             ratio = min(int(article['width']) / media.width, int(article['height']) / media.height)
             new_size = tuple(int(dim * ratio) for dim in media.size)
         else:
             new_size = media.size
 
-        img = media.resize(new_size, Image.LANCZOS)
-        product_bbox = img.split()[-1].filter(ImageFilter.MinFilter(3)).getbbox()
-        product = img.crop(product_bbox)
+        product = media.resize(new_size, Image.LANCZOS)
+        
 
         if (isinstance(article.get('left'), (int, float)) and 
             isinstance(article.get('top'), (int, float)) and 
@@ -156,10 +156,11 @@ def compose_render(template, articles, is_save):
 
         if template.is_shadow:
             shadow = get_shadow(product)
-            shadow.putdata([(10, 10, 10, 10) if item[3] > 0 else item for item in shadow.getdata()])
+            shadow.putdata([(10, 10, 10, 50) if item[3] > 0 else item for item in shadow.getdata()])
+            blur_image = shadow.filter(ImageFilter.GaussianBlur(radius=5))
             shadow_left = left - (shadow.width - product.width)
-            shadow_top = top + (product.height - shadow.height)
-            background.paste(shadow, (int(shadow_left), int(shadow_top)), shadow)
+            shadow_top = top + (product.height - shadow.height-10)
+            background.paste(blur_image, (int(shadow_left), int(shadow_top)), blur_image)
 
         if product.mode == "RGBA":
             mask = product.split()[3]

@@ -67,12 +67,17 @@ class TemplateAPIView(APIView):
             data['is_shadow'] = json.loads(data['is_shadow'].lower())
             brands, applications, article_placements = [], [], []
             pos_index = 0
-            for brand in list(map(int, data['brands'].split(','))):
-                brand_obj = Brand.objects.get(id=brand)
-                brands.append(brand_obj.pk)
-            for app in list(map(int, data['applications'].split(','))):
-                app_obj = Application.objects.get(id=app)
-                applications.append(app_obj.pk)
+            if data.get('brands'):
+                for brand in list(map(int, data['brands'].split(','))):
+                    if brand:
+                        brand_obj = Brand.objects.get(id=brand)
+                        brands.append(brand_obj.pk)
+
+            if data.get('applications'):
+                for app in list(map(int, data['applications'].split(','))):
+                    if app:
+                        app_obj = Application.objects.get(id=app)
+                        applications.append(app_obj.pk)
             for placement in json.loads(data['article_placements']):
                 pos_index += 1
                 placement_obj = ComposingArticleTemplate.objects.create(pos_index = pos_index, position_x = placement['position_x'], position_y = placement['position_y'], height = placement['height'], width = placement['width'], z_index = placement['z_index'],  created_by_id = request.user.pk, modified_by_id = request.user.pk)
