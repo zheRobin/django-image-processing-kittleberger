@@ -231,8 +231,8 @@ class ComposingTemplateFilter(APIView):
         paginator = LimitOffsetPagination()
         paginator.default_limit = limit
         paginator.offset = offset
-        context_template = paginator.paginate_queryset(templates, request)
         context_products = paginator.paginate_queryset(products, request)
+        context_template = paginator.paginate_queryset(templates, request)
         articles = Article.objects.filter(articles__in=context_products).distinct()
         template_serializer = ComposingTemplateSerializer(context_template, many=True)
         product_serializer = ComposingSerializer(context_products, many=True)
@@ -275,7 +275,7 @@ class ComposingAPIView(APIView):
         template = ComposingTemplate.objects.get(id=template_id)
         base64_image = compose_render(template, articles_data) if data.get('base64_img', None) is None else data['base64_img']
         product = save_product_image(convert_image(base64_image, template.file_type, template.resolution_dpi))
-        png_result = save_product_image(data['base64_img']) if format == 'TIFF' else ''
+        png_result = save_product_image(data['base64_img']) if template.file_type == 'TIFF' else ''
         for article_data in articles_data:
             article_data['created_by_id'] = request.user.id
             article_data['modified_by_id'] = request.user.id
@@ -303,7 +303,7 @@ class ComposingAPIView(APIView):
             template = ComposingTemplate.objects.get(id=template_id)
             base64_image = compose_render(template, articles_data) if data.get('base64_img', None) is None else data['base64_img']
             product = save_product_image(convert_image(base64_image, template.file_type, template.resolution_dpi))
-            png_result = save_product_image(data['base64_img']) if format == 'TIFF' else ''
+            png_result = save_product_image(data['base64_img']) if template.file_type == 'TIFF' else ''
             articles = []
             allowable_fields = ['id', 'pos_index', 'name', 'article_number', 'mediaobject_id', 'scaling', 'alignment', 'height', 'width', 'z_index', 'created_by_id', 'modified_by_id']
             for article_data in articles_data:
