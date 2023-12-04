@@ -86,20 +86,6 @@ def get_shadow(img):
     shadow = segmented.transform(segmented.size, method=Image.AFFINE, data=[c, -0.8, -px, 0, 1.1, -py], resample=Image.BICUBIC)
     shadow = shadow.resize((int(shadow.width*c*3/4), shadow.height)).filter(ImageFilter.GaussianBlur(radius=3))
     return shadow
-def save_product_image(base64_img):
-    img_format = base64_img.split(';')[0].split('/')[1]
-    img_name = str(int(time.time())) + '.' + img_format
-    local_path = os.path.join(STATIC_URL, img_name)
-    output_path = 'mediafiles/compose/'+img_name
-    if base64_img and ',' in base64_img:
-        img_data = base64.b64decode(base64_img.split(',')[1])
-    else:
-        return Response(error("Invalid base64_img"))
-    with open(local_path, 'wb') as f:
-        f.write(img_data)
-    result = upload( local_path, output_path)
-    return result
-
 def remove_background_and_inner(input_image_data):
     input_img = cv2.imdecode(np.frombuffer(input_image_data, np.uint8), cv2.IMREAD_UNCHANGED)
     removed_bg_img = remove(input_img, alpha_matting=True, alpha_matting_foreground_threshold=0,alpha_matting_background_threshold=100, alpha_matting_erode_size=100,bgcolor=(255, 255, 255, 255))
@@ -170,11 +156,24 @@ def compose_render(template, articles, is_save):
 
     buffered = BytesIO()
     format = 'PNG' if is_save == False else template.file_type
+    print(format)
     background.save(buffered, format=format, dpi=(template.resolution_dpi, template.resolution_dpi))
     base64_img = base64.b64encode(buffered.getvalue())
     img_data = f"data:image/{format.lower()};base64,{base64_img.decode('utf-8')}"
     return img_data
-
+def save_product_image(base64_img):
+    img_format = base64_img.split(';')[0].split('/')[1]
+    img_name = str(int(time.time())) + '.' + img_format
+    local_path = os.path.join(STATIC_URL, img_name)
+    output_path = 'mediafiles/compose/'+img_name
+    if base64_img and ',' in base64_img:
+        img_data = base64.b64decode(base64_img.split(',')[1])
+    else:
+        return Response(error("Invalid base64_img"))
+    with open(local_path, 'wb') as f:
+        f.write(img_data)
+    result = upload( local_path, output_path)
+    return result
 def conv_tiff(image_or_url):
     if urlparse(image_or_url).scheme in ['http', 'https']:
         response = requests.get(image_or_url, stream=True)

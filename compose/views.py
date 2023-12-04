@@ -80,7 +80,9 @@ class TemplateAPIView(APIView):
                         applications.append(app_obj.pk)
             for placement in json.loads(data['article_placements']):
                 pos_index += 1
-                placement_obj = ComposingArticleTemplate.objects.create(pos_index = pos_index, position_x = placement['position_x'], position_y = placement['position_y'], height = placement['height'], width = placement['width'], z_index = placement['z_index'],  created_by_id = request.user.pk, modified_by_id = request.user.pk)
+                if data.get('z_index') != "":
+                    z_index = data.get('z_index', 0)
+                placement_obj = ComposingArticleTemplate.objects.create(pos_index = pos_index, position_x = placement['position_x'], position_y = placement['position_y'], height = placement['height'], width = placement['width'], z_index = z_index,  created_by_id = request.user.pk, modified_by_id = request.user.pk)
                 article_placements.append(placement_obj.pk)
             template = ComposingTemplate.objects.create(name = data['name'], is_shadow = data['is_shadow'],resolution_width = data['resolution_width'],resolution_dpi = resolution_dpi, file_type = data['type'],resolution_height=data['resolution_height'], created_by_id = request.user.pk, modified_by_id = request.user.pk, preview_image_cdn_url = preview_image_cdn_url, bg_image_cdn_url = bg_image_cdn_url, bg_image_tiff_url = bg_image_tiff_url)
             template.brand.set(brands)
@@ -272,7 +274,7 @@ class ComposingAPIView(APIView):
         if 'base64_img' not in data or ',' not in data['base64_img']:
             return Response(error("Invalid or missing base64_img"))
         template = ComposingTemplate.objects.get(id=template_id)
-        is_save = True
+        is_save = False
         base64_image = compose_render(template, articles_data, is_save)
         product = save_product_image(base64_image)
         png_result = save_product_image(data['base64_img']) if format == 'TIFF' else ''
