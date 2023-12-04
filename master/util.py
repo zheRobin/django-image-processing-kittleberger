@@ -86,7 +86,13 @@ def get_shadow(img):
     shadow = segmented.transform(segmented.size, method=Image.AFFINE, data=[c, -0.8, -px, 0, 1.1, -py], resample=Image.BICUBIC)
     shadow = shadow.resize((int(shadow.width*c*3/4), shadow.height)).filter(ImageFilter.GaussianBlur(radius=3))
     return shadow
-def remove_background_and_inner(input_image_data):
+def convert_to_png(input_image_data):
+    img = Image.open(BytesIO(input_image_data)).convert("RGBA")
+    bytesIO_obj = BytesIO()
+    img.save(bytesIO_obj, format='PNG')
+    png_image_data = bytesIO_obj.getvalue()
+    return png_image_data
+def get_transparent(input_image_data):
     input_img = cv2.imdecode(np.frombuffer(input_image_data, np.uint8), cv2.IMREAD_UNCHANGED)
     removed_bg_img = remove(input_img, alpha_matting=True, alpha_matting_foreground_threshold=0,alpha_matting_background_threshold=100, alpha_matting_erode_size=100,bgcolor=(255, 255, 255, 255))
     gray_img = cv2.cvtColor(removed_bg_img, cv2.COLOR_BGR2GRAY)
@@ -96,50 +102,46 @@ def remove_background_and_inner(input_image_data):
     result_image[thresh_img == 0] = (0, 0, 0, 0)
     _, output_img_data = cv2.imencode('.png', result_image)
     return output_img_data.tobytes()
-def compose_render(template, articles, is_save):
-    bg_url= template.bg_image_tiff_url if template.file_type == 'TIFF' and template.bg_image_tiff_url is not None else template.bg_image_cdn_url
+def process_article(article, template):
+    url = article['tiff_url'] if template.file_type == 'TIFF' and article.get('tiff_url',None) is not None else article['render_url']
+    response_image_data = requests.get(url).content
+    png_image_data = convert_to_png(response_image_data)
+    if article['is_transparent'] == True or article['is_transparent']:
+        img = Image.open(BytesIO(get_transparent(png_image_data)))
+        product_bbox = img.split()[-1].filter(ImageFilter.MinFilter(3)).getbbox()
+        media = img.crop(product_bbox)
+    else:
+        media = Image.open(BytesIO(png_image_data))
+    if (article.get('width') is not None and
+        article.get('height') is not None and
+        isinstance(article.get('width'), (int, float)) and
+        isinstance(article.get('height'), (int, float)) and
+        media.width != 0 and media.height != 0):
+        ratio = min(int(article['width']) / media.width, int(article['height']) / media.height)
+        new_size = tuple(int(dim * ratio) for dim in media.size)
+    else:
+        new_size = media.size
+    product = media.resize(new_size, Image.LANCZOS)
+    return product
+def compose_render(template, articles):
+    bg_url= template.bg_image_cdn_url
     background = Image.open(BytesIO(requests.get(bg_url).content))
-    articles = sorted(articles, key=lambda x: x.get('z_index', 0))
-    
+    articles = sorted(articles, key=lambda x: x.get('z_index', 0))    
     for article in articles:
-        url = article['tiff_url'] if template.file_type == 'TIFF' and article.get('tiff_url',None) is not None else article['render_url']
-        response = requests.get(url).content
-        if article['is_transparent'] == True or article['is_transparent']:
-            img = Image.open(BytesIO(remove_background_and_inner(response)))
-            product_bbox = img.split()[-1].filter(ImageFilter.MinFilter(3)).getbbox()
-            media = img.crop(product_bbox)
-        else:
-            media = Image.open(BytesIO(response))
-
-        if (article.get('width') is not None and
-            article.get('height') is not None and
-            isinstance(article.get('width'), (int, float)) and
-            isinstance(article.get('height'), (int, float)) and
-            media.width != 0 and media.height != 0):
-            ratio = min(int(article['width']) / media.width, int(article['height']) / media.height)
-            new_size = tuple(int(dim * ratio) for dim in media.size)
-        else:
-            new_size = media.size
-
-        product = media.resize(new_size, Image.LANCZOS)
-        
-
+        product = process_article(article, template)
         if (isinstance(article.get('left'), (int, float)) and 
             isinstance(article.get('top'), (int, float)) and 
             isinstance(article.get('width'), (int, float)) and
             isinstance(article.get('height'), (int, float)) and
             isinstance(product.width, (int, float)) and
             isinstance(product.height, (int, float))):
-
             left = int(article['left'] + (article['width'] - product.width) / 2)
             top = int(article['top'] + (article['height'] - product.height) / 2)
         else:
             left_value = article.get('left', 0)
             top_value = article.get('top', 0)
-
             left = int(left_value) if left_value is not None else 0
             top = int(top_value) if top_value is not None else 0
-
         if template.is_shadow:
             shadow = get_shadow(product)
             shadow.putdata([(10, 10, 10, 50) if item[3] > 0 else item for item in shadow.getdata()])
@@ -147,20 +149,25 @@ def compose_render(template, articles, is_save):
             shadow_left = left - (shadow.width - product.width)
             shadow_top = top + (product.height - shadow.height-10)
             background.paste(blur_image, (int(shadow_left), int(shadow_top)), blur_image)
-
         if product.mode == "RGBA":
             mask = product.split()[3]
             background.paste(product, (left, top), mask)
         else:
             background.paste(product, (left, top))
-
     buffered = BytesIO()
-    format = 'PNG' if is_save == False else template.file_type
-    print(format)
-    background.save(buffered, format=format, dpi=(template.resolution_dpi, template.resolution_dpi))
+    background.save(buffered, format='PNG', dpi=(template.resolution_dpi, template.resolution_dpi))
     base64_img = base64.b64encode(buffered.getvalue())
-    img_data = f"data:image/{format.lower()};base64,{base64_img.decode('utf-8')}"
+    img_data = f"data:image/png;base64,{base64_img.decode('utf-8')}"
     return img_data
+def convert_image(base64_img, target_format):
+    prefix, base64_str = base64_img.split(",") 
+    source_format = prefix.split(";")[0].split("/")[-1]
+    if source_format.lower() == target_format.lower():
+        return base64_img
+    img = Image.open(BytesIO(base64.b64decode(base64_str))).convert(target_format)
+    bytesIO_obj = BytesIO()
+    img.save(bytesIO_obj, format=target_format)    
+    return f"data:image/{target_format};base64,{base64.b64encode(bytesIO_obj.getvalue()).decode()}"
 def save_product_image(base64_img):
     img_format = base64_img.split(';')[0].split('/')[1]
     img_name = str(int(time.time())) + '.' + img_format

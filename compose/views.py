@@ -54,16 +54,16 @@ class TemplateAPIView(APIView):
             resolution_dpi = resolution_dpi_mapping.get(data['type'], 72)
             if 'preview_image' in request.FILES:
                 preview_image = request.FILES['preview_image']
-                preview_image_cdn_url = resize_save_img(preview_image, (400,int(400*int(data['resolution_height'])/int(data['resolution_width']))),'JPEG','mediafiles/preview_images/',resolution_dpi)
+                preview_image_cdn_url = resize_save_img(preview_image, (400,int(400*int(data['resolution_height'])/int(data['resolution_width']))),'JPEG','mediafiles/preview_images/',72)
             else:
                 preview_image_cdn_url = ""
             background_image = request.FILES['background_image']
-            format = 'PNG' if data['type'] == 'TIFF' else data['type']
-            if data['type'] == 'TIFF':
-                bg_image_tiff_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),data['type'],'mediafiles/background_images/',resolution_dpi)
-            else:
-                bg_image_tiff_url = ''
-            bg_image_cdn_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),format,'mediafiles/background_images/',resolution_dpi)
+            # format = 'PNG' if data['type'] == 'TIFF' else data['type']
+            # if data['type'] == 'TIFF':
+            #     bg_image_tiff_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),data['type'],'mediafiles/background_images/',resolution_dpi)
+            # else:
+            bg_image_tiff_url = ''
+            bg_image_cdn_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),'PNG','mediafiles/background_images/',72)
             data['is_shadow'] = json.loads(data['is_shadow'].lower())
             brands, applications, article_placements = [], [], []
             pos_index = 0
@@ -101,26 +101,27 @@ class TemplateAPIView(APIView):
             if int(data['resolution_width'])*int(data['resolution_height'])>=10000000:
                 return Response(error("Image resolution must be under 10M pixel"))
             template = ComposingTemplate.objects.get(pk=pk)
-            resolution_dpi_mapping = {"PNG": 144, "JPEG": 144, "TIFF": 300}
+            resolution_dpi_mapping = {"PNG": 72, "JPEG": 72, "TIFF": 300}
+            resolution_dpi = template.resolution_dpi
             if 'name' in data:
                 template.name = data['name']
             if 'type' in data:
                 template.file_type = data['type']
-                resolution_dpi = resolution_dpi_mapping.get(data['type'], 144)
+                resolution_dpi = resolution_dpi_mapping.get(data['type'], 72)
                 template.resolution_dpi = resolution_dpi
 
             if 'preview_image' in request.FILES:
                 preview_image = request.FILES['preview_image']
-                template.preview_image_cdn_url = resize_save_img(preview_image, (400,int(400*int(data['resolution_height'])/int(data['resolution_width']))),'JPEG','mediafiles/preview_images/',resolution_dpi_mapping.get(data['type'], 144))
+                template.preview_image_cdn_url = resize_save_img(preview_image, (400,int(400*int(data['resolution_height'])/int(data['resolution_width']))),'JPEG','mediafiles/preview_images/',72)
 
             if 'background_image' in request.FILES:
                 background_image = request.FILES['background_image']
-                format = 'PNG' if data['type'] == 'TIFF' else data['type']
-                if data['type'] == 'TIFF':
-                    template.bg_image_tiff_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),data['type'],'mediafiles/background_images/',resolution_dpi)
-                else:
-                    template.bg_image_tiff_url = ''
-                template.bg_image_cdn_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),format,'mediafiles/background_images/',resolution_dpi_mapping.get(data['type'], 144))
+                # format = 'PNG' if data['type'] == 'TIFF' else data['type']
+                # if data['type'] == 'TIFF':
+                #     template.bg_image_tiff_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),data['type'],'mediafiles/background_images/',resolution_dpi)
+                # else:
+                #     template.bg_image_tiff_url = ''
+                template.bg_image_cdn_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),'PNG','mediafiles/background_images/',72)
 
             if 'is_shadow' in data:
                 template.is_shadow = json.loads(data['is_shadow'].lower())
@@ -274,8 +275,7 @@ class ComposingAPIView(APIView):
         if 'base64_img' not in data or ',' not in data['base64_img']:
             return Response(error("Invalid or missing base64_img"))
         template = ComposingTemplate.objects.get(id=template_id)
-        is_save = False
-        base64_image = compose_render(template, articles_data, is_save)
+        base64_image = compose_render(template, articles_data)
         product = save_product_image(base64_image)
         png_result = save_product_image(data['base64_img']) if format == 'TIFF' else ''
         for article_data in articles_data:
@@ -303,8 +303,7 @@ class ComposingAPIView(APIView):
         img_data = data.get('base64_img', None)
         if img_data is not None and img_data.startswith(f"data:image"):
             template = ComposingTemplate.objects.get(id=template_id)
-            is_save = True
-            base64_image = compose_render(template, articles_data, is_save)
+            base64_image = compose_render(template, articles_data)
             product = save_product_image(base64_image)
             png_result = save_product_image(data['base64_img']) if format == 'TIFF' else ''
             articles = []
@@ -354,8 +353,7 @@ class RefreshAPIView(APIView):
         except ComposingTemplate.DoesNotExist:
             return Response(error("Invalid or missing template_id"))
         try:
-            is_save = False
-            base64_image = compose_render(template, articles_data, is_save)
+            base64_image = compose_render(template, articles_data)
         except Exception as e:
             return Response(server_error(str(e)))
         return Response(success(base64_image))

@@ -198,10 +198,8 @@ class ComposingGenAPIView(APIView):
     def post(self, request):
         data = self.validate_data(request.data)
         template = self.get_template(data['template_id'])
-        is_save = False
-        compose = compose_render(template, data['articles'], is_save)
+        compose = compose_render(template, data['articles'])
         return Response(success(compose))
-    
 class TiffConvAPIView(APIView):
     def post(self, request):
         tiff_image = request.data.get('tiff_image')
