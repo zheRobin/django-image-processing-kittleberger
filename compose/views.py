@@ -275,8 +275,8 @@ class ComposingAPIView(APIView):
         if 'base64_img' not in data or ',' not in data['base64_img']:
             return Response(error("Invalid or missing base64_img"))
         template = ComposingTemplate.objects.get(id=template_id)
-        base64_image = compose_render(template, articles_data)
-        product = save_product_image(base64_image)
+        base64_image = compose_render(template, articles_data) if data.get('base64_img', None) is None else data['base64_img']
+        product = save_product_image(convert_image(base64_image, template.file_type, template.resolution_dpi))
         png_result = save_product_image(data['base64_img']) if format == 'TIFF' else ''
         for article_data in articles_data:
             article_data['created_by_id'] = request.user.id
@@ -303,8 +303,8 @@ class ComposingAPIView(APIView):
         img_data = data.get('base64_img', None)
         if img_data is not None and img_data.startswith(f"data:image"):
             template = ComposingTemplate.objects.get(id=template_id)
-            base64_image = compose_render(template, articles_data)
-            product = save_product_image(base64_image)
+            base64_image = compose_render(template, articles_data) if data.get('base64_img', None) is None else data['base64_img']
+            product = save_product_image(convert_image(base64_image, template.file_type, template.resolution_dpi))
             png_result = save_product_image(data['base64_img']) if format == 'TIFF' else ''
             articles = []
             allowable_fields = ['id', 'pos_index', 'name', 'article_number', 'mediaobject_id', 'scaling', 'alignment', 'height', 'width', 'z_index', 'created_by_id', 'modified_by_id']

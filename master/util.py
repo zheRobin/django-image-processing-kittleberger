@@ -159,12 +159,13 @@ def compose_render(template, articles):
     base64_img = base64.b64encode(buffered.getvalue())
     img_data = f"data:image/png;base64,{base64_img.decode('utf-8')}"
     return img_data
-def convert_image(base64_img, target_format):
+def convert_image(base64_img, target_format, resolution_dpi):
     prefix, base64_str = base64_img.split(",") 
     source_format = prefix.split(";")[0].split("/")[-1]
-    if source_format.lower() == target_format.lower():
-        return base64_img
-    img = Image.open(BytesIO(base64.b64decode(base64_str))).convert(target_format)
+    img = Image.open(BytesIO(base64.b64decode(base64_str)))
+    if source_format.lower() != target_format.lower():
+        img = img.convert(target_format)
+    img = img.resize((img.width, img.height), resolution_dpi)
     bytesIO_obj = BytesIO()
     img.save(bytesIO_obj, format=target_format)    
     return f"data:image/{target_format};base64,{base64.b64encode(bytesIO_obj.getvalue()).decode()}"
