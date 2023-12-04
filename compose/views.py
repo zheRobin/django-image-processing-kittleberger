@@ -289,8 +289,8 @@ class ComposingAPIView(APIView):
             composing.articles.set(articles)
         except Exception as e:
             return Response(error(str(e)))
-        
-        return Response(created(self, product))
+        serializer = ComposingSerializer(composing)
+        return Response(created(self, serializer.data))
     
     def put(self, request, format=None):
         data = request.data
@@ -354,8 +354,7 @@ class RefreshAPIView(APIView):
             base64_image = compose_render(template, articles_data)
         except Exception as e:
             return Response(server_error(str(e)))
-        result = {data, base64_image}
-        return Response(success(result))
+        return Response(success(base64_image))
 class ComposingArticleTemplateDetail(APIView):
     def get_object(self, pk):
         try:
