@@ -219,6 +219,15 @@ class ComposingTemplateFilter(APIView):
                 article_filter |= Q(count=number)
         templates = ComposingTemplate.objects.all().order_by('-created')
         products = Composing.objects.all().order_by('-created')
+        brand_all = Brand.objects.all()
+        application_all = Application.objects.all()
+        brand_data,application_data = {},{}
+        for brand_el in brand_all:
+            template_count = templates.filter(brand=brand_el).count()
+            brand_data[brand_el.index] = template_count
+        for application_el in application_all:
+            template_count = templates.filter(application=application_el).count()
+            application_data[application_el.index] = template_count
         if brands:
             templates = templates.filter(brand__pk__in=brands).distinct()
             products = products.filter(template__brand__pk__in=brands)
@@ -243,6 +252,8 @@ class ComposingTemplateFilter(APIView):
             "templates":template_serializer.data,
             "products":product_serializer.data,
             "articles":article_serializer.data,
+            "brand_data":brand_data,
+            "application_data":application_data,
         }
         return paginator.get_paginated_response(result)
 class ComposingArticleTemplateList(APIView):
