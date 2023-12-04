@@ -217,21 +217,25 @@ class ComposingTemplateFilter(APIView):
             else:
                 number = int(number)
                 article_filter |= Q(count=number)
-        templates = ComposingTemplate.objects.all().order_by('id')
+        templates = ComposingTemplate.objects.all().order_by('-created')
+        products = Composing.objects.all().order_by('-created')
         if brands:
             templates = templates.filter(brand__pk__in=brands).distinct()
+            products = products.filter(template__brand__pk__in=brands)
 
         if applications:
             templates = templates.filter(application__pk__in=applications).distinct()
+            products = products.filter(template__application__pk__in=applications).distinct()
         templates = templates.annotate(count=Count('article_placements')).filter(article_filter)
+        products = products.annotate(count=Count('articles')).filter(article_filter)
         paginator = LimitOffsetPagination()
         paginator.default_limit = limit
         paginator.offset = offset
-        context = paginator.paginate_queryset(templates, request)
-        products = Composing.objects.filter(template__in=context)
-        articles = Article.objects.filter(articles__in=products).distinct()
-        template_serializer = ComposingTemplateSerializer(context, many=True)
-        product_serializer = ComposingSerializer(products, many=True)
+        context_template = paginator.paginate_queryset(templates, request)
+        context_products = paginator.paginate_queryset(products, request)
+        articles = Article.objects.filter(articles__in=context_products).distinct()
+        template_serializer = ComposingTemplateSerializer(context_template, many=True)
+        product_serializer = ComposingSerializer(context_products, many=True)
         article_serializer = ArticleSerializer(articles, many=True)
         document_last_update = Document.objects.latest('id').upload_date
         result = {
@@ -350,7 +354,8 @@ class RefreshAPIView(APIView):
             base64_image = compose_render(template, articles_data)
         except Exception as e:
             return Response(server_error(str(e)))
-        return Response(success(base64_image))
+        result = {data, base64_image}
+        return Response(success(result))
 class ComposingArticleTemplateDetail(APIView):
     def get_object(self, pk):
         try:
