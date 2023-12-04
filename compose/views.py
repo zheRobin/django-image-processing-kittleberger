@@ -58,10 +58,6 @@ class TemplateAPIView(APIView):
             else:
                 preview_image_cdn_url = ""
             background_image = request.FILES['background_image']
-            # format = 'PNG' if data['type'] == 'TIFF' else data['type']
-            # if data['type'] == 'TIFF':
-            #     bg_image_tiff_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),data['type'],'mediafiles/background_images/',resolution_dpi)
-            # else:
             bg_image_tiff_url = ''
             bg_image_cdn_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),'PNG','mediafiles/background_images/',72)
             data['is_shadow'] = json.loads(data['is_shadow'].lower())
@@ -116,13 +112,11 @@ class TemplateAPIView(APIView):
 
             if 'background_image' in request.FILES:
                 background_image = request.FILES['background_image']
-                # format = 'PNG' if data['type'] == 'TIFF' else data['type']
-                # if data['type'] == 'TIFF':
-                #     template.bg_image_tiff_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),data['type'],'mediafiles/background_images/',resolution_dpi)
-                # else:
-                #     template.bg_image_tiff_url = ''
                 template.bg_image_cdn_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),'PNG','mediafiles/background_images/',72)
-
+            if 'resolution_width' in data:
+                template.resolution_width = data['resolution_width']
+            if 'resolution_height' in data:
+                template.resolution_height = data['resolution_height']
             if 'is_shadow' in data:
                 template.is_shadow = json.loads(data['is_shadow'].lower())
 

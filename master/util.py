@@ -87,14 +87,14 @@ def get_shadow(img):
     shadow = shadow.resize((int(shadow.width*c*3/4), shadow.height)).filter(ImageFilter.GaussianBlur(radius=3))
     return shadow
 def convert_to_png(input_image_data):
-    img = Image.open(BytesIO(input_image_data)).convert("RGBA")
+    img = Image.open(BytesIO(input_image_data))
     bytesIO_obj = BytesIO()
-    img.save(bytesIO_obj, format='PNG')
+    img.save(bytesIO_obj, format='TIFF')
     png_image_data = bytesIO_obj.getvalue()
     return png_image_data
 def get_transparent(input_image_data):
     input_img = cv2.imdecode(np.frombuffer(input_image_data, np.uint8), cv2.IMREAD_UNCHANGED)
-    removed_bg_img = remove(input_img, alpha_matting=True, alpha_matting_foreground_threshold=0,alpha_matting_background_threshold=100, alpha_matting_erode_size=100,bgcolor=(255, 255, 255, 255))
+    removed_bg_img = remove(input_img)
     gray_img = cv2.cvtColor(removed_bg_img, cv2.COLOR_BGR2GRAY)
     blur_img = cv2.GaussianBlur(gray_img, (15, 15), 0)
     _, thresh_img = cv2.threshold(blur_img, 230, 255, cv2.THRESH_BINARY_INV)
@@ -103,7 +103,7 @@ def get_transparent(input_image_data):
     _, output_img_data = cv2.imencode('.png', result_image)
     return output_img_data.tobytes()
 def process_article(article, template):
-    url = article['tiff_url'] if template.file_type == 'TIFF' and article.get('tiff_url',None) is not None else article['render_url']
+    url = article['render_url'] if template.file_type == 'TIFF' and article.get('tiff_url',None) is not None else article['render_url']
     response_image_data = requests.get(url).content
     png_image_data = convert_to_png(response_image_data)
     if article['is_transparent'] == True or article['is_transparent']:
@@ -163,12 +163,11 @@ def convert_image(base64_img, target_format, resolution_dpi):
     prefix, base64_str = base64_img.split(",") 
     source_format = prefix.split(";")[0].split("/")[-1]
     img = Image.open(BytesIO(base64.b64decode(base64_str)))
-    if source_format.lower() != target_format.lower():
-        img = img.convert(target_format)
-    img = img.resize((img.width, img.height), resolution_dpi)
+    if source_format.lower() == target_format.lower():
+        return base64_img
     bytesIO_obj = BytesIO()
-    img.save(bytesIO_obj, format=target_format)    
-    return f"data:image/{target_format};base64,{base64.b64encode(bytesIO_obj.getvalue()).decode()}"
+    img.save(bytesIO_obj, format=target_format, dpi=(resolution_dpi,resolution_dpi))    
+    return f"data:image/{target_format.lower()};base64,{base64.b64encode(bytesIO_obj.getvalue()).decode('utf-8')}"
 def save_product_image(base64_img):
     img_format = base64_img.split(';')[0].split('/')[1]
     img_name = str(int(time.time())) + '.' + img_format
