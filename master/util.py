@@ -169,8 +169,10 @@ def convert_image(base64_img, target_format, resolution_dpi):
     img = Image.open(BytesIO(base64.b64decode(base64_str)))
     if source_format.lower() == target_format.lower():
         return base64_img
+    if img.mode in ('RGBA', 'LA') and target_format.lower() == 'jpeg':
+        img = img.convert('RGB')
     bytesIO_obj = BytesIO()
-    img.save(bytesIO_obj, format=target_format, dpi=(resolution_dpi,resolution_dpi))    
+    img.save(bytesIO_obj, format=target_format.upper(), dpi=(resolution_dpi,resolution_dpi))
     return f"data:image/{target_format.lower()};base64,{base64.b64encode(bytesIO_obj.getvalue()).decode('utf-8')}"
 def save_product_image(base64_img, old_path):
     img_format = base64_img.split(';')[0].split('/')[1]
