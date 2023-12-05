@@ -210,7 +210,7 @@ class TiffConvAPIView(APIView):
 class PrivacyAPIView(APIView):
     permission_classes = (IsAuthenticated,)
     def get(self, request, lang, format=None):
-        url = f"https://policies.ttprivacy.com/api/v1/policies/application/31f1b9fd-90e9-4078-9078-a8275eab8a04/country/{lang.lower()[:2]}/language/{lang}"
+        url = f"https://policies.ttprivacy.com/api/v1/policies/application/31f1b9fd-90e9-4078-9078-a8275eab8a04/country/de/language/{lang}"
         response = requests.get(url)
         if response.status_code == 200:
             return Response(success(response.json().get('text', '')))
