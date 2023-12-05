@@ -222,6 +222,9 @@ class ComposingTemplateFilter(APIView):
         template_count = templates.count()
         products = Composing.objects.all().order_by('-created')
         product_count = products.count()
+        if brands:
+            templates = templates.filter(brand__pk__in=brands).distinct()
+            products = products.filter(template__brand__pk__in=brands)
         if applications:
             templates = templates.filter(application__pk__in=applications).distinct()
             products = products.filter(template__application__pk__in=applications).distinct()
@@ -433,9 +436,6 @@ class PageDataAPIView(APIView):
         for application_el in applications:
             template_count = templates.filter(application=application_el).count()
             application_data[str(application_el.index)] = template_count
-        if brands:
-            templates = templates.filter(brand__pk__in=brands).distinct()
-            products = products.filter(template__brand__pk__in=brands)
         brand_serializer = BrandSerializer(brands, many=True)
         application_serializer = ApplicationSerializer(applications, many=True)
         country_serializer = CountrySerializer(countries, many=True)
