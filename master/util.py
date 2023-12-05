@@ -51,7 +51,11 @@ def save_origin(input_path):
     img.save(local_path, "PNG")
     return img_name
 def resize_save_img(img, size, type, output_path, resolution_dpi):
-    img = Image.open(img)
+    if isinstance(img, str) and img.startswith('http'):
+        response = requests.get(img)
+        img = Image.open(BytesIO(response.content))
+    else:
+        img = Image.open(img)
     if img.mode not in ('RGB', 'RGBA') or (img.mode == 'RGBA' and type.upper() != 'PNG'):
         img = img.convert("RGB")
     img_name = str(int(time.time())) + '.' + type.lower()

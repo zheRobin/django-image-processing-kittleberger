@@ -113,10 +113,11 @@ class TemplateAPIView(APIView):
             if 'background_image' in request.FILES:
                 background_image = request.FILES['background_image']
                 template.bg_image_cdn_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),'PNG','mediafiles/background_images/',72)
-            if 'resolution_width' in data:
-                template.resolution_width = data['resolution_width']
-            if 'resolution_height' in data:
-                template.resolution_height = data['resolution_height']
+            if 'resolution_width' in data and 'resolution_height' in data:
+                if (template.resolution_width, template.resolution_height) != (int(data['resolution_width']), int(data['resolution_height'])):
+                    template.resolution_width = data['resolution_width']
+                    template.resolution_height = data['resolution_height']
+                    template.bg_image_cdn_url = resize_save_img(template.bg_image_cdn_url, (template.resolution_width, template.resolution_height),'PNG','mediafiles/background_images/',72)
             if 'is_shadow' in data:
                 template.is_shadow = json.loads(data['is_shadow'].lower())
 
@@ -218,20 +219,9 @@ class ComposingTemplateFilter(APIView):
                 number = int(number)
                 article_filter |= Q(count=number)
         templates = ComposingTemplate.objects.all().order_by('-created')
+        template_count = templates.count()
         products = Composing.objects.all().order_by('-created')
-        brand_all = Brand.objects.all()
-        application_all = Application.objects.all()
-        brand_data,application_data = {},{}
-        for brand_el in brand_all:
-            template_count = templates.filter(brand=brand_el).count()
-            brand_data[brand_el.index] = template_count
-        for application_el in application_all:
-            template_count = templates.filter(application=application_el).count()
-            application_data[application_el.index] = template_count
-        if brands:
-            templates = templates.filter(brand__pk__in=brands).distinct()
-            products = products.filter(template__brand__pk__in=brands)
-
+        product_count = products.count()
         if applications:
             templates = templates.filter(application__pk__in=applications).distinct()
             products = products.filter(template__application__pk__in=applications).distinct()
@@ -249,11 +239,11 @@ class ComposingTemplateFilter(APIView):
         document_last_update = Document.objects.latest('id').upload_date
         result = {
             "document_last_update":document_last_update,
+            "template_count":template_count,
+            "product_count":product_count,
             "templates":template_serializer.data,
             "products":product_serializer.data,
             "articles":article_serializer.data,
-            "brand_data":brand_data,
-            "application_data":application_data,
         }
         return paginator.get_paginated_response(result)
 class ComposingArticleTemplateList(APIView):
@@ -434,14 +424,27 @@ class PageDataAPIView(APIView):
         brands = Brand.objects.all()
         applications = Application.objects.all()
         countries = Country.objects.all()
-
+        templates = ComposingTemplate.objects.all()
+        products = Composing.objects.all()
+        brand_data,application_data = {},{}
+        for brand_el in brands:
+            template_count = templates.filter(brand=brand_el).count()
+            brand_data[str(brand_el.index)] = template_count
+        for application_el in applications:
+            template_count = templates.filter(application=application_el).count()
+            application_data[str(application_el.index)] = template_count
+        if brands:
+            templates = templates.filter(brand__pk__in=brands).distinct()
+            products = products.filter(template__brand__pk__in=brands)
         brand_serializer = BrandSerializer(brands, many=True)
         application_serializer = ApplicationSerializer(applications, many=True)
         country_serializer = CountrySerializer(countries, many=True)
         response_data = {
             'brands': brand_serializer.data,
             'applications': application_serializer.data,
-            'country_list':country_serializer.data
+            'country_list':country_serializer.data,            
+            "brand_data":brand_data,
+            "application_data":application_data,
         }
         return Response(success(response_data))
     def post(self, request):
