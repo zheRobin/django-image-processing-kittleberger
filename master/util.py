@@ -116,8 +116,8 @@ def process_article(article, template):
         media = img.crop(product_bbox)
     else:
         media = Image.open(BytesIO(png_image_data))
-    if (article.get('width') is not None and article.get('width') !=0 and
-        article.get('height') is not None and article.get('height') != 0 and
+    if (article.get('width') is not None and
+        article.get('height') is not None and
         isinstance(article.get('width'), (int, float)) and
         isinstance(article.get('height'), (int, float)) and
         media.width != 0 and media.height != 0):
@@ -125,8 +125,7 @@ def process_article(article, template):
         new_size = tuple(int(dim * ratio) for dim in media.size)
     else:
         new_size = media.size
-    if media.width != 0 and media.height != 0:
-        product = media.resize(new_size, Image.LANCZOS)
+    product = media.resize(new_size, Image.LANCZOS)
     return product
 def compose_render(template, articles):
     bg_url= template.bg_image_cdn_url
@@ -168,29 +167,30 @@ def convert_image(base64_img, target_format, resolution_dpi):
     prefix, base64_str = base64_img.split(",") 
     source_format = prefix.split(";")[0].split("/")[-1]
     img = Image.open(BytesIO(base64.b64decode(base64_str)))
-
     if source_format.lower() == target_format.lower():
         return base64_img
-    
-    if img.mode in ('RGBA', 'LA') and target_format.lower() == 'jpeg':
-        img = img.convert('RGB')
-
     bytesIO_obj = BytesIO()
-    img.save(bytesIO_obj, format=target_format.upper(), dpi=(resolution_dpi,resolution_dpi))  
-      
+    img.save(bytesIO_obj, format=target_format, dpi=(resolution_dpi,resolution_dpi))    
     return f"data:image/{target_format.lower()};base64,{base64.b64encode(bytesIO_obj.getvalue()).decode('utf-8')}"
-def save_product_image(base64_img):
+def save_product_image(base64_img, old_path):
     img_format = base64_img.split(';')[0].split('/')[1]
     img_name = str(int(time.time())) + '.' + img_format
     local_path = os.path.join(STATIC_URL, img_name)
-    output_path = 'mediafiles/compose/'+img_name
+    if old_path is not None or old_path!= '':
+        old_file_format = old_path.split('.')[-1]
+        old_file_name = os.path.splitext(os.path.basename(urlparse(old_path).path))[0]
+        if img_format == old_file_format:
+            img_name = old_file_name
+        else:
+            img_name = old_file_name + '.' + img_format
+    output_path = 'mediafiles/compose/' + img_name
     if base64_img and ',' in base64_img:
         img_data = base64.b64decode(base64_img.split(',')[1])
     else:
-        return Response(error("Invalid base64_img"))
+        return {"detail": "Invalid base64_img"}
     with open(local_path, 'wb') as f:
         f.write(img_data)
-    result = upload( local_path, output_path)
+    result = upload(local_path, output_path)
     return result
 def conv_tiff(image_or_url):
     if urlparse(image_or_url).scheme in ['http', 'https']:

@@ -284,8 +284,8 @@ class ComposingAPIView(APIView):
             return Response(error("Invalid or missing base64_img"))
         template = ComposingTemplate.objects.get(id=template_id)
         base64_image = compose_render(template, articles_data) if data.get('base64_img', None) is None else data['base64_img']
-        product = save_product_image(convert_image(base64_image, template.file_type, template.resolution_dpi))
-        png_result = save_product_image(data['base64_img']) if template.file_type == 'TIFF' else ''
+        product = save_product_image(convert_image(base64_image, template.file_type, template.resolution_dpi), None)
+        png_result = save_product_image(data['base64_img'], None) if template.file_type == 'TIFF' else ''
         for article_data in articles_data:
             article_data['created_by_id'] = request.user.id
             article_data['modified_by_id'] = request.user.id
@@ -312,8 +312,8 @@ class ComposingAPIView(APIView):
         if img_data is not None and img_data.startswith(f"data:image"):
             template = ComposingTemplate.objects.get(id=template_id)
             base64_image = compose_render(template, articles_data) if data.get('base64_img', None) is None else data['base64_img']
-            product = save_product_image(convert_image(base64_image, template.file_type, template.resolution_dpi))
-            png_result = save_product_image(data['base64_img']) if template.file_type == 'TIFF' else ''
+            product = save_product_image(convert_image(base64_image, template.file_type, template.resolution_dpi), composing.cdn_url)
+            png_result = save_product_image(data['base64_img'], composing.png_result) if template.file_type == 'TIFF' else ''
             articles = []
             allowable_fields = ['id', 'pos_index', 'name', 'article_number', 'mediaobject_id', 'scaling', 'alignment', 'height', 'width', 'z_index', 'created_by_id', 'modified_by_id']
             for article_data in articles_data:
@@ -434,7 +434,6 @@ class PageDataAPIView(APIView):
         applications = Application.objects.all()
         countries = Country.objects.all()
         templates = ComposingTemplate.objects.all()
-        products = Composing.objects.all()
         brand_data,application_data = {},{}
         for brand_el in brands:
             template_count = templates.filter(brand=brand_el).count()
