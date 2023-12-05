@@ -78,6 +78,8 @@ class TemplateAPIView(APIView):
                 pos_index += 1
                 if data.get('z_index') != "":
                     z_index = data.get('z_index', 0)
+                if int(placement['width']) == 0 or int(placement['height']) == 0:
+                    return Response(error("Not allowed 0 value for width or height!"))
                 placement_obj = ComposingArticleTemplate.objects.create(pos_index = pos_index, position_x = placement['position_x'], position_y = placement['position_y'], height = placement['height'], width = placement['width'], z_index = z_index,  created_by_id = request.user.pk, modified_by_id = request.user.pk)
                 article_placements.append(placement_obj.pk)
             template = ComposingTemplate.objects.create(name = data['name'], is_shadow = data['is_shadow'],resolution_width = data['resolution_width'],resolution_dpi = resolution_dpi, file_type = data['type'],resolution_height=data['resolution_height'], created_by_id = request.user.pk, modified_by_id = request.user.pk, preview_image_cdn_url = preview_image_cdn_url, bg_image_cdn_url = bg_image_cdn_url, bg_image_tiff_url = bg_image_tiff_url)
@@ -105,8 +107,9 @@ class TemplateAPIView(APIView):
                 template.file_type = data['type']
                 resolution_dpi = resolution_dpi_mapping.get(data['type'], 72)
                 template.resolution_dpi = resolution_dpi
-            if 'is_deleted' in data:
-                template.preview_image_cdn_url = ""
+            if 'is_deleted' in data and json.loads(data['is_deleted'].lower()) == True:
+                print(json.loads(data['is_deleted'].lower()))
+                # template.preview_image_cdn_url = ""
             if 'preview_image' in request.FILES:
                 preview_image = request.FILES['preview_image']
                 template.preview_image_cdn_url = resize_save_img(preview_image, (400,int(400*int(data['resolution_height'])/int(data['resolution_width']))),'JPEG','mediafiles/preview_images/',72)
@@ -142,6 +145,8 @@ class TemplateAPIView(APIView):
                 existing_placements.delete()
                 pos_index = 1
                 for placement in json.loads(data['article_placements']):
+                    if int(placement['width']) == 0 or int(placement['height']) == 0:
+                        return Response(error("Not allowed 0 value for width or height!"))
                     placement_obj = ComposingArticleTemplate.objects.create(
                         pos_index = pos_index,
                         position_x = placement['position_x'], 

@@ -116,8 +116,8 @@ def process_article(article, template):
         media = img.crop(product_bbox)
     else:
         media = Image.open(BytesIO(png_image_data))
-    if (article.get('width') is not None and
-        article.get('height') is not None and
+    if (article.get('width') is not None and article.get('width') !=0 and
+        article.get('height') is not None and article.get('height') != 0 and
         isinstance(article.get('width'), (int, float)) and
         isinstance(article.get('height'), (int, float)) and
         media.width != 0 and media.height != 0):
@@ -125,7 +125,8 @@ def process_article(article, template):
         new_size = tuple(int(dim * ratio) for dim in media.size)
     else:
         new_size = media.size
-    product = media.resize(new_size, Image.LANCZOS)
+    if media.width != 0 and media.height != 0:
+        product = media.resize(new_size, Image.LANCZOS)
     return product
 def compose_render(template, articles):
     bg_url= template.bg_image_cdn_url
@@ -167,10 +168,16 @@ def convert_image(base64_img, target_format, resolution_dpi):
     prefix, base64_str = base64_img.split(",") 
     source_format = prefix.split(";")[0].split("/")[-1]
     img = Image.open(BytesIO(base64.b64decode(base64_str)))
+
     if source_format.lower() == target_format.lower():
         return base64_img
+    
+    if img.mode in ('RGBA', 'LA') and target_format.lower() == 'jpeg':
+        img = img.convert('RGB')
+
     bytesIO_obj = BytesIO()
-    img.save(bytesIO_obj, format=target_format, dpi=(resolution_dpi,resolution_dpi))    
+    img.save(bytesIO_obj, format=target_format.upper(), dpi=(resolution_dpi,resolution_dpi))  
+      
     return f"data:image/{target_format.lower()};base64,{base64.b64encode(bytesIO_obj.getvalue()).decode('utf-8')}"
 def save_product_image(base64_img):
     img_format = base64_img.split(';')[0].split('/')[1]
