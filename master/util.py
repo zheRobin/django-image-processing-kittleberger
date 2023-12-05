@@ -182,7 +182,7 @@ def save_product_image(base64_img, old_path):
         old_file_format = old_path.split('.')[-1]
         old_file_name = os.path.splitext(os.path.basename(urlparse(old_path).path))[0]
         if img_format == old_file_format:
-            img_name = old_file_name
+            img_name = old_file_name + '.' + old_file_format
         else:
             img_name = old_file_name + '.' + img_format
     output_path = 'mediafiles/compose/' + img_name

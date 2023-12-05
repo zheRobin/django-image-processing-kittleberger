@@ -88,7 +88,7 @@ def get_s3_config():
 def s3_upload(file, path):
     s3_client, s3_bucket, s3_endpoint = get_s3_config(), env('S3_BUCKET_NAME'), env('S3_ENDPOINT_URL')
     try:
-        content_type = mimetypes.guess_type(path)[0]
+        content_type = mimetypes.guess_type(path)[0] or 'application/octet-stream'
         s3_client.upload_fileobj(file, s3_bucket, path, ExtraArgs={'ACL':'public-read','ContentType': content_type})
     except NoCredentialsError:
         return Response(error("No AWS credentials found"))
