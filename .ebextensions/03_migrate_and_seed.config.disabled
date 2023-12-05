@@ -1,0 +1,7 @@
+container_commands:
+  01_migrate:
+    command: "source /var/app/venv/staging-LQM1lest/bin/activate && cd /var/app/staging/ && python app/manage.py migrate --noinput"
+    leader_only: true
+  02_createsu:
+    command: "source /var/app/venv/staging-LQM1lest/bin/activate && cd /var/app/staging/ && python app/manage.py seedgen --noinput"
+    leader_only: true
