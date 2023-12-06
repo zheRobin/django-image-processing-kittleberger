@@ -216,3 +216,6 @@ class PrivacyAPIView(APIView):
             return Response(success(response.json().get('text', '')))
         else:
             return Response(error('Error retrieving data'))
+class ImageDownloadAPIView(APIView):
+    def get(self, request, url, format=None):
+        return Response(success(get_image_base64(url))) if urlparse(url).scheme in ['http', 'https'] else Response(error("Invalid URL"))

@@ -232,3 +232,8 @@ def get_tiff(image_or_url):
                 base64_img = base64.b64encode(output.getvalue())
 
     return f"data:image/tiff;base64,{base64_img.decode('utf-8')}"
+def get_image_base64(url):
+    response = requests.get(url)
+    mime_type = response.headers['Content-Type'] 
+    img_data = base64.b64encode(response.content).decode('utf-8')
+    return f'data:{mime_type};base64,{img_data}'

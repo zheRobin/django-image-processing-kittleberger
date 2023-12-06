@@ -108,8 +108,7 @@ class TemplateAPIView(APIView):
                 resolution_dpi = resolution_dpi_mapping.get(data['type'], 72)
                 template.resolution_dpi = resolution_dpi
             if 'is_deleted' in data and json.loads(data['is_deleted'].lower()) == True:
-                print(json.loads(data['is_deleted'].lower()))
-                # template.preview_image_cdn_url = ""
+                template.preview_image_cdn_url = ""
             if 'preview_image' in request.FILES:
                 preview_image = request.FILES['preview_image']
                 template.preview_image_cdn_url = resize_save_img(preview_image, (400,int(400*int(data['resolution_height'])/int(data['resolution_width']))),'JPEG','mediafiles/preview_images/',72)
