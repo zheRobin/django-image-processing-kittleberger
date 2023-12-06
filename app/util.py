@@ -1,7 +1,6 @@
 from django.core.files.storage import default_storage
 from rest_framework import status
 import boto3, environ, mimetypes
-from botocore.config import Config
 from botocore.exceptions import NoCredentialsError
 from rest_framework.response import Response
 env = environ.Env()

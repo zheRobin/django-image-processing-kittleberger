@@ -69,35 +69,30 @@ class ParseAPIView(APIView):
         api_key_instance.last_used = timezone.now()
         api_key_instance.save()
         file = request.FILES['file']
-        filepath = default_storage.save(os.path.join('temp', file.name), ContentFile(file.read()))
+        filepath = default_storage.save(os.path.join('static', file.name), ContentFile(file.read()))
 
         try:
             client = MongoClient(host=env('MONGO_DB_HOST'))
             db = client[env('MONGO_DB_NAME')]
             collection_name = str(int(time.time()))
             collection = db[collection_name]
-            def process(context):
+            def process(self,context):
                 chunk = []
                 for event, elem in context:
                     try:
                         chunk.append(convert(elem))
+                        elem.clear()
                         if len(chunk) == 1000:
                             collection.insert_many(chunk)
-                            chunk.clear()  
+                            chunk = []
                     except json.JSONDecodeError:
-                        return Response(error( "Failed to decode JSON"))
+                        pass
                     except Exception as e:
-                        return Response(server_error( f"Unexpected error: {str(e)}"))
-                    finally:
-                        elem.clear()
-                        while elem.getprevious() is not None:
-                            del elem.getparent()[0]
+                        pass
                 if chunk:
                     collection.insert_many(chunk)
                     chunk.clear()
-
                 Document.objects.create(file_id=collection_name)
-
         except ConnectionFailure:
             return Response(server_error( "Unable to connect to MongoDB"))
 
@@ -111,7 +106,7 @@ class ParseAPIView(APIView):
                     try:
                         start_time = time.time()
                         context = etree.iterparse(zip_ref.open(f), events=('end',), tag='mediaobject')
-                        process(context)
+                        process(self,context)
                         end_time = time.time()
                         duration = end_time - start_time
                         print(f'Time taken: {duration} seconds')
@@ -119,10 +114,8 @@ class ParseAPIView(APIView):
                         errors.append(f"File {f} is not a well-formed XML document.")
                     except Exception as e:
                         return Response(error( str(e)))
-
         zip_ref.close()
         os.remove(filepath)
-
         if errors.__len__() > 0:
             return Response(created(self, errors))
         return Response(created(self, "Data inserted successfully"))

@@ -32,6 +32,8 @@ def convert(element):
 def upload(in_path, out_path):
     with open(in_path, 'rb') as f:
         file_link = s3_upload(f, out_path)
+    f.close()
+    os.remove(in_path)
     return file_link
 def remove_background(input_path):
     response = requests.get(input_path)
