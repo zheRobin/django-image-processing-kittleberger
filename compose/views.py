@@ -237,7 +237,9 @@ class ComposingTemplateFilter(APIView):
             templates = templates.filter(application__pk__in=applications).distinct()
             products = products.filter(template__application__pk__in=applications).distinct()
         if article_list:
-            products = products.filter(articles__pk__in=article_list).distinct()
+            for article in article_list:
+                products = products.filter(articles__mediaobject_id=article)
+            products.distinct() 
         templates = templates.annotate(count=Count('article_placements')).filter(article_filter)
         products = products.annotate(count=Count('articles')).filter(article_filter)
         paginator = LimitOffsetPagination()
