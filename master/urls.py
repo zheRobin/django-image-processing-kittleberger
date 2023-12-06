@@ -3,7 +3,7 @@ from . import views
 
 urlpatterns = [
     path('upload/', views.ParseAPIView.as_view()),
-    path('download/<str:url>', views.ImageDownloadAPIView.as_view()),
+    path('download/', views.ImageDownloadAPIView.as_view()),
     path('filter', views.ProductFilterAPIView.as_view()),
     path('apikey/', views.APIKeyAPIView.as_view()),
     path('apikey/<int:pk>', views.APIKeyAPIView.as_view()),
