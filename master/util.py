@@ -85,17 +85,17 @@ def get_shadow(img):
     img_shape.putalpha(img_alpha)
     segmented = Image.new('RGBA', (img_shape.size[0], img_shape.size[1]*2//5))
     segmented.paste(img_shape, (0, -(img_shape.size[1]//5)*3))
-    c = 1.1 + segmented.height / segmented.width
+    c = 0.85 + segmented.height / segmented.width
     px = (segmented.width/20)*(img.height/img.width)
     py = segmented.height*0.08
 
     shadow = segmented.transform(segmented.size, method=Image.AFFINE, data=[c, -0.8, -px, 0, 1.1, -py], resample=Image.BICUBIC)
-    shadow = shadow.resize((int(shadow.width*c*3/4), shadow.height)).filter(ImageFilter.GaussianBlur(radius=3))
+    shadow = shadow.resize((int(shadow.width*c), shadow.height)).filter(ImageFilter.GaussianBlur(radius=3))
     return shadow
 def convert_to_png(input_image_data):
     img = Image.open(BytesIO(input_image_data))
     bytesIO_obj = BytesIO()
-    img.save(bytesIO_obj, format='JPEG')
+    img.save(bytesIO_obj, format='PNG')
     png_image_data = bytesIO_obj.getvalue()
     return png_image_data
 def get_transparent(input_image_data):
@@ -109,15 +109,14 @@ def get_transparent(input_image_data):
     _, output_img_data = cv2.imencode('.png', result_image)
     return output_img_data.tobytes()
 def process_article(article, template):
-    url = article['render_url'] if template.file_type == 'TIFF' and article.get('tiff_url',None) is not None else article['render_url']
+    url = article['tiff_url'] if template.file_type == 'TIFF' and article.get('tiff_url',None) is not None else article['render_url']
     response_image_data = requests.get(url).content
-    png_image_data = convert_to_png(response_image_data)
     if article['is_transparent'] == True or article['is_transparent']:
-        img = Image.open(BytesIO(remove(png_image_data, model='u2net', alpha_matting=True, alpha_matting_foreground_threshold=100,alpha_matting_background_threshold=10, alpha_matting_erode_size=10, alpha_matting_base_size = 1000)))
+        img = Image.open(BytesIO(remove(response_image_data)))
         product_bbox = img.split()[-1].filter(ImageFilter.MinFilter(3)).getbbox()
         media = img.crop(product_bbox)
     else:
-        media = Image.open(BytesIO(png_image_data))
+        media = Image.open(BytesIO(response_image_data))
     if (article.get('width') is not None and
         article.get('height') is not None and
         isinstance(article.get('width'), (int, float)) and

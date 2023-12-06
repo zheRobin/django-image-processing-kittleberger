@@ -89,6 +89,7 @@ class ParseAPIView(APIView):
                         pass
                     except Exception as e:
                         pass
+                print(len(chunk))
                 if chunk:
                     collection.insert_many(chunk)
                     chunk.clear()
