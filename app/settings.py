@@ -29,7 +29,7 @@ SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = (env('DEBUG_MODE') == 'True')
-
+ADMIN_ENABLED = (env('ADMIN_ENABLED') == 'True')
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
 CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS')
 CORS_ORIGIN_ALLOW_ALL = True

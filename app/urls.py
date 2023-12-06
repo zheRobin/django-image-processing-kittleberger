@@ -21,9 +21,10 @@ from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
 router = DefaultRouter()
 urlpatterns = [
-    path('admin/', admin.site.urls),
     path('api/v1/user/', include('accounts.urls')),
     path('api/v1/core/', include('master.urls')),
     path('api/v1/compose/', include('compose.urls')),
 ]
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+if settings.ADMIN_ENABLED is True:
+    urlpatterns += [path('admin/', admin.site.urls),]
