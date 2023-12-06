@@ -93,12 +93,12 @@ def get_shadow(img):
 def convert_to_png(input_image_data):
     img = Image.open(BytesIO(input_image_data))
     bytesIO_obj = BytesIO()
-    img.save(bytesIO_obj, format='TIFF')
+    img.save(bytesIO_obj, format='JPEG')
     png_image_data = bytesIO_obj.getvalue()
     return png_image_data
 def get_transparent(input_image_data):
     input_img = cv2.imdecode(np.frombuffer(input_image_data, np.uint8), cv2.IMREAD_UNCHANGED)
-    removed_bg_img = remove(input_img)
+    removed_bg_img = remove(input_img, model='u2net', alpha_matting=True, alpha_matting_foreground_threshold=40,alpha_matting_background_threshold=10, alpha_matting_erode_size=10, alpha_matting_base_size = 1000, bgcolor=(255,255,255,255))
     gray_img = cv2.cvtColor(removed_bg_img, cv2.COLOR_BGR2GRAY)
     blur_img = cv2.GaussianBlur(gray_img, (15, 15), 0)
     _, thresh_img = cv2.threshold(blur_img, 230, 255, cv2.THRESH_BINARY_INV)
@@ -111,7 +111,7 @@ def process_article(article, template):
     response_image_data = requests.get(url).content
     png_image_data = convert_to_png(response_image_data)
     if article['is_transparent'] == True or article['is_transparent']:
-        img = Image.open(BytesIO(get_transparent(png_image_data)))
+        img = Image.open(BytesIO(remove(png_image_data, model='u2net', alpha_matting=True, alpha_matting_foreground_threshold=100,alpha_matting_background_threshold=10, alpha_matting_erode_size=10, alpha_matting_base_size = 1000)))
         product_bbox = img.split()[-1].filter(ImageFilter.MinFilter(3)).getbbox()
         media = img.crop(product_bbox)
     else:
@@ -178,7 +178,7 @@ def save_product_image(base64_img, old_path):
     img_format = base64_img.split(';')[0].split('/')[1]
     img_name = str(int(time.time())) + '.' + img_format
     local_path = os.path.join(STATIC_URL, img_name)
-    if old_path is not None or old_path!= '':
+    if old_path is not None and '.' in old_path:
         old_file_format = old_path.split('.')[-1]
         old_file_name = os.path.splitext(os.path.basename(urlparse(old_path).path))[0]
         if img_format == old_file_format:

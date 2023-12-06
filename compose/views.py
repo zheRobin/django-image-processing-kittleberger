@@ -216,6 +216,7 @@ class ComposingTemplateFilter(APIView):
         brands = request.data.get('brand', [])
         applications = request.data.get('application', [])
         article_numbers = request.data.get('article_number', [])
+        article_list = request.data.get('article_list',[])
         article_filter = Q()
         for number in article_numbers:
             if '+' in number:
@@ -227,6 +228,7 @@ class ComposingTemplateFilter(APIView):
         templates = ComposingTemplate.objects.all().order_by('-created')
         template_count = templates.count()
         products = Composing.objects.all().order_by('-created')
+        articles = Article.objects.filter(articles__in=products).distinct()
         product_count = products.count()
         if brands:
             templates = templates.filter(brand__pk__in=brands).distinct()
@@ -234,6 +236,8 @@ class ComposingTemplateFilter(APIView):
         if applications:
             templates = templates.filter(application__pk__in=applications).distinct()
             products = products.filter(template__application__pk__in=applications).distinct()
+        if article_list:
+            products = products.filter(articles__pk__in=article_list).distinct()
         templates = templates.annotate(count=Count('article_placements')).filter(article_filter)
         products = products.annotate(count=Count('articles')).filter(article_filter)
         paginator = LimitOffsetPagination()
@@ -241,7 +245,6 @@ class ComposingTemplateFilter(APIView):
         paginator.offset = offset
         context_products = paginator.paginate_queryset(products, request)
         context_template = paginator.paginate_queryset(templates, request)
-        articles = Article.objects.filter(articles__in=context_products).distinct()
         template_serializer = ComposingTemplateSerializer(context_template, many=True)
         product_serializer = ComposingSerializer(context_products, many=True)
         article_serializer = ArticleSerializer(articles, many=True)
