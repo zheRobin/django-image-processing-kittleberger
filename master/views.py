@@ -24,10 +24,8 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-import environ
-env = environ.Env()
-environ.Env.read_env()
-
+from django.conf import settings
+MONGO_DB = settings.MONGO_DB
 class APIKeyAPIView(APIView):
     permission_classes = (IsAuthenticated, IsAdminUser)
 
@@ -72,10 +70,8 @@ class ParseAPIView(APIView):
         filepath = default_storage.save(os.path.join('static', file.name), ContentFile(file.read()))
 
         try:
-            client = MongoClient(host=env('MONGO_DB_HOST'))
-            db = client[env('MONGO_DB_NAME')]
             collection_name = str(int(time.time()))
-            collection = db[collection_name]
+            collection = MONGO_DB[collection_name]
             def process(self,context):
                 chunk = []
                 for event, elem in context:
@@ -122,8 +118,6 @@ class ParseAPIView(APIView):
         return Response(created(self, "Data inserted successfully"))
 class ProductFilterAPIView(APIView):
     def get(self, request, format = None):
-        client = MongoClient(host=os.getenv('MONGO_DB_HOST'))
-        db = client[os.getenv('MONGO_DB_NAME')]
         file_id = Document.objects.latest('id').file_id
         product = request.GET.get('product', None)
         countries = request.GET.get('country', '')
@@ -141,7 +135,7 @@ class ProductFilterAPIView(APIView):
         if country_names:
             query.append({"linked_products.sale_countries": {"$in": country_names}})
 
-        cursor = db[file_id].find({"$and": query}).skip((page-1) * iter_limit) if query else db[file_id].find().skip((page-1) * iter_limit)
+        cursor = MONGO_DB[file_id].find({"$and": query}).skip((page-1) * iter_limit) if query else MONGO_DB[file_id].find().skip((page-1) * iter_limit)
         for document in cursor:
             cdn_urls = document.get('urls')
             render_url = None

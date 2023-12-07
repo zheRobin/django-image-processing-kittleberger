@@ -13,9 +13,6 @@ from app.util import *
 from master.util import *
 from master.models import *
 import json
-import environ
-env = environ.Env()
-environ.Env.read_env()
 
 # Create your views here.
 

@@ -14,6 +14,7 @@ from pathlib import Path
 import os
 import environ
 from datetime import timedelta
+from pymongo import MongoClient
 env = environ.Env()
 environ.Env.read_env()
 
@@ -215,3 +216,4 @@ STATIC_ROOT = os.path.join(BASE_DIR,'static')
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+MONGO_DB = MongoClient(host=os.getenv('MONGO_DB_HOST'))[env('MONGO_DB_NAME')]
