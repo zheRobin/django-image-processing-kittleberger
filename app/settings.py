@@ -172,12 +172,10 @@ DATABASES = {
        'PASSWORD': env('RDS_DB_PASSWORD'),
        'HOST': env('RDS_DB_HOST'),
        'PORT': env('RDS_DB_PORT'),
-       'CONN_MAX_AGE' : None if env('RDS_DB_CONN_MAX_AGE')=='None' else 0,
+       'CONN_MAX_AGE' : None if env('RDS_DB_CONN_MAX_AGE')=='None' else int(env('RDS_DB_CONN_MAX_AGE')),
        'CONN_HEALTH_CHECKS' : True if env('RDS_DB_CONN_HEALTH_CHECKS')=='True' else False,
     },
 }
-
-
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
 
