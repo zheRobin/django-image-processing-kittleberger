@@ -172,6 +172,7 @@ DATABASES = {
        'PASSWORD': env('RDS_DB_PASSWORD'),
        'HOST': env('RDS_DB_HOST'),
        'PORT': env('RDS_DB_PORT'),
+       'CONN_MAX_AGE' : env('RDS_DB_CONN_MAX_AGE'),
     },
 }
 
@@ -206,7 +207,6 @@ USE_I18N = True
 
 USE_TZ = True
 MAX_UPLOAD_SIZE = "429916160"
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
