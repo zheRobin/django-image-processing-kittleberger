@@ -1,15 +1,14 @@
 from django.conf import settings
 from lxml import etree as ET
 from urllib.parse import urlparse
-import requests
-import cv2
+import requests, os, time, base64, cv2, math
 import numpy as np
 from rembg import remove
 from PIL import Image,ImageFilter
 from io import BytesIO
-import os, time, base64
 from app.util import *
 
+MAX_PIXELS = 5000000
 URLS_XPATH = ET.XPath('.//urls/url')
 LINKED_PRODUCTS_XPATH = ET.XPath('.//linked_products/product')
 LINKED_PRODUCT_ATTRIBUTES_XPATH = ET.XPath('.//attributes/attribute')
@@ -85,17 +84,21 @@ def get_shadow(img):
     img_shape.putalpha(img_alpha)
     segmented = Image.new('RGBA', (img_shape.size[0], img_shape.size[1]*2//5))
     segmented.paste(img_shape, (0, -(img_shape.size[1]//5)*3))
-    c = 0.85 + segmented.height / segmented.width
+    c = 0.9 + segmented.height / segmented.width
     px = (segmented.width/20)*(img.height/img.width)
     py = segmented.height*0.08
 
     shadow = segmented.transform(segmented.size, method=Image.AFFINE, data=[c, -0.8, -px, 0, 1.1, -py], resample=Image.BICUBIC)
     shadow = shadow.resize((int(shadow.width*c), shadow.height)).filter(ImageFilter.GaussianBlur(radius=3))
     return shadow
-def convert_to_png(input_image_data):
-    img = Image.open(BytesIO(input_image_data))
+def val_image(input_image_data):
+    image_data = Image.open(BytesIO(input_image_data))
+    if image_data.size[0] * image_data.size[1] > MAX_PIXELS:
+        scale = math.sqrt(MAX_PIXELS) / math.sqrt(image_data.size[0] * image_data.size[1])
+        new_size = (int(scale * image_data.size[0]), int(scale * image_data.size[1]))
+        image_data.resize(new_size, Image.LANCZOS)
     bytesIO_obj = BytesIO()
-    img.save(bytesIO_obj, format='PNG')
+    image_data.save(bytesIO_obj, format='PNG')
     png_image_data = bytesIO_obj.getvalue()
     return png_image_data
 def get_transparent(input_image_data):
@@ -112,7 +115,7 @@ def process_article(article, template):
     url = article['tiff_url'] if template.file_type == 'TIFF' and article.get('tiff_url',None) is not None else article['render_url']
     response_image_data = requests.get(url).content
     if article['is_transparent'] == True or article['is_transparent']:
-        img = Image.open(BytesIO(remove(response_image_data)))
+        img = Image.open(BytesIO(remove(val_image(response_image_data))))
         product_bbox = img.split()[-1].filter(ImageFilter.MinFilter(3)).getbbox()
         media = img.crop(product_bbox)
     else:
@@ -128,9 +131,26 @@ def process_article(article, template):
         new_size = media.size
     product = media.resize(new_size, Image.LANCZOS)
     return product
+def add_alpha_channel(img):
+    if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
+        return img
+    if img.mode == 'RGB':
+        alpha = Image.new('L', img.size, 255)
+        return Image.merge('RGBA', img.split() + (alpha,))
+    elif img.mode == 'P':
+        alpha = Image.new('L', img.size, 0)
+        new_img = Image.composite(img, alpha, img)
+        assert new_img.mode == 'RGB'
+        alpha = Image.new('L', new_img.size, 255)
+        return Image.merge('RGBA', new_img.split() + (alpha,))
+def remove_alpha_channel(img):
+    if img.mode in ('RGBA', 'LA'):
+        return img.convert('RGB')
+    return img 
 def compose_render(template, articles):
     bg_url= template.bg_image_cdn_url
     background = Image.open(BytesIO(requests.get(bg_url).content))
+    background = remove_alpha_channel(background)
     articles = sorted(articles, key=lambda x: x.get('z_index', 0))    
     for article in articles:
         product = process_article(article, template)
@@ -148,6 +168,7 @@ def compose_render(template, articles):
             left = int(left_value) if left_value is not None else 0
             top = int(top_value) if top_value is not None else 0
         if template.is_shadow:
+            
             shadow = get_shadow(product)
             shadow.putdata([(10, 10, 10, 50) if item[3] > 0 else item for item in shadow.getdata()])
             blur_image = shadow.filter(ImageFilter.GaussianBlur(radius=5))
