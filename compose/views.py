@@ -12,6 +12,8 @@ from django.shortcuts import get_object_or_404
 from app.util import *
 from master.util import *
 from master.models import *
+from functools import reduce
+from operator import and_
 import json
 
 # Create your views here.
@@ -233,9 +235,11 @@ class ComposingTemplateFilter(APIView):
             templates = templates.filter(application__pk__in=applications).distinct()
             products = products.filter(template__application__pk__in=applications).distinct()
         if article_list:
-            for article in article_list:
-                products = products.filter(articles__mediaobject_id=article)
-            products.distinct() 
+            product_ids = set(products.values_list('id', flat=True))
+            for article_id in article_list:
+                current_article_product_ids = set(products.filter(articles__mediaobject_id=article_id).values_list('id', flat=True))
+                product_ids.intersection_update(current_article_product_ids)
+            products = products.filter(id__in=product_ids) 
         templates = templates.annotate(count=Count('article_placements')).filter(article_filter)
         products = products.annotate(count=Count('articles')).filter(article_filter)
         paginator = LimitOffsetPagination()

@@ -1,5 +1,4 @@
 from rest_framework import serializers
-from pymongo import MongoClient
 from .models import *
 from master.models import *
 from django.conf import settings

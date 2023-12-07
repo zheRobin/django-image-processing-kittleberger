@@ -24,27 +24,12 @@ class LoginAPIView(APIView):
         
         token = get_tokens_for_user(user)
         user.last_login = timezone.now()
-        user.save()
-
-        # Using Django’s built-in serializers        
-        brands = Brand.objects.all()
-        applications = Application.objects.all()
-        countries = Country.objects.all()
-
-        brand_serializer = BrandSerializer(brands, many=True)
-        application_serializer = ApplicationSerializer(applications, many=True)
-        country_serializer = CountrySerializer(countries, many=True)
-        
+        user.save()       
         user_serializer = UserSerializer(user)
 
         response_data = {
             'user': user_serializer.data,
             'access_token': token["access_token"],
-            'page_data': {
-                'brands': brand_serializer.data,
-                'applications': application_serializer.data,
-                'country_list':country_serializer.data
-            }
         }
         return Response(success( response_data))
 

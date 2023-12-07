@@ -62,12 +62,19 @@ class APIKeyAPIView(APIView):
             return Response(error( "Bad request"))
 class ParseAPIView(APIView):
     def post(self, request):
-        api_key = request.POST.get('api_key')
-        api_key_instance = get_object_or_404(APIKey, apikey=api_key)
-        api_key_instance.last_used = timezone.now()
-        api_key_instance.save()
-        file = request.FILES['file']
-        filepath = default_storage.save(os.path.join('static', file.name), ContentFile(file.read()))
+        try:
+            api_key = request.POST.get('api_key')
+            api_key_instance = get_object_or_404(APIKey, apikey=api_key)
+            api_key_instance.last_used = timezone.now()
+            api_key_instance.save()
+        except:
+            raise ValidationError('API Key Validation Failed.')
+        
+        try:
+            file = request.FILES['file']
+            filepath = default_storage.save(os.path.join('static', file.name), ContentFile(file.read()))
+        except:
+            raise ValidationError('Error when handling file operations.')
 
         try:
             collection_name = str(int(time.time()))
