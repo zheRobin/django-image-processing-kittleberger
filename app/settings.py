@@ -216,4 +216,4 @@ STATIC_ROOT = os.path.join(BASE_DIR,'static')
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-MONGO_DB = MongoClient(host=os.getenv('MONGO_DB_HOST'))[env('MONGO_DB_NAME')]
+MONGO_DB = MongoClient(host=env('MONGO_DB_HOST'))[env('MONGO_DB_NAME')]
