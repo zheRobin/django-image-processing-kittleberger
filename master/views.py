@@ -3,7 +3,6 @@ from django.core.files.base import ContentFile
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
-from pymongo import MongoClient
 import zipfile
 import json
 import os
@@ -25,7 +24,8 @@ from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.conf import settings
-MONGO_DB = settings.MONGO_DB
+from pymongo import MongoClient
+mongo_client = MongoClient(host=settings.MONGO_DB_HOST)[settings.MONGO_DB_NAME]
 class APIKeyAPIView(APIView):
     permission_classes = (IsAuthenticated, IsAdminUser)
 
@@ -78,7 +78,7 @@ class ParseAPIView(APIView):
 
         try:
             collection_name = str(int(time.time()))
-            collection = MONGO_DB[collection_name]
+            collection = mongo_client[collection_name]
             def process(self,context):
                 chunk = []
                 for event, elem in context:
@@ -142,7 +142,7 @@ class ProductFilterAPIView(APIView):
         if country_names:
             query.append({"linked_products.sale_countries": {"$in": country_names}})
 
-        cursor = MONGO_DB[file_id].find({"$and": query}).skip((page-1) * iter_limit) if query else MONGO_DB[file_id].find().skip((page-1) * iter_limit)
+        cursor = mongo_client[file_id].find({"$and": query}).skip((page-1) * iter_limit) if query else mongo_client[file_id].find().skip((page-1) * iter_limit)
         for document in cursor:
             cdn_urls = document.get('urls')
             render_url = None

@@ -14,8 +14,6 @@ from pathlib import Path
 import os
 import environ
 from datetime import timedelta
-from pymongo import MongoClient
-from pymongo.errors import ServerSelectionTimeoutError
 env = environ.Env()
 environ.Env.read_env()
 
@@ -217,9 +215,5 @@ STATIC_ROOT = os.path.join(BASE_DIR,'static')
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-MONGO_DB = MongoClient(host=env('MONGO_DB_HOST'))[env('MONGO_DB_NAME')]
-try:
-    MONGO_DB.command("serverStatus")
-    print('MongoDB connection is established')
-except ServerSelectionTimeoutError:
-    print('Unable to connect to the MongoDB server')
+MONGO_DB_HOST = env('MONGO_DB_HOST')
+MONGO_DB_NAME = env('MONGO_DB_NAME')

@@ -2,7 +2,8 @@ from rest_framework import serializers
 from .models import *
 from master.models import *
 from django.conf import settings
-MONGO_DB = settings.MONGO_DB
+from pymongo import MongoClient
+mongo_client = MongoClient(host=settings.MONGO_DB_HOST)[settings.MONGO_DB_NAME]
 class BrandSerializer(serializers.ModelSerializer):
     class Meta:
         model = Brand
@@ -41,14 +42,14 @@ class ArticleSerializer(serializers.ModelSerializer):
         fields = '__all__'
     def get_render_url(self, obj):
         file_id = Document.objects.latest('id').file_id
-        document = MONGO_DB[file_id].find_one({'id': obj.mediaobject_id})
+        document = mongo_client[file_id].find_one({'id': obj.mediaobject_id})
         if document:
             cdn_urls = document.get('urls', {})
             return cdn_urls.get('jpeg') or cdn_urls.get('png')
 
     def get_tiff_url(self, obj):
         file_id = Document.objects.latest('id').file_id
-        document = MONGO_DB[file_id].find_one({'id': obj.mediaobject_id})
+        document = mongo_client[file_id].find_one({'id': obj.mediaobject_id})
         if document:
             cdn_urls = document.get('urls', {})
             return cdn_urls.get('tiff') or ''
