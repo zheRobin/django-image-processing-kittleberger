@@ -259,8 +259,7 @@ class ComposingTemplateFilter(APIView):
             "products":product_serializer.data,
             "articles":article_serializer.data,
         }
-        # return Response(success(result))
-        return paginator.get_paginated_response(result)
+        return Response(success(result))
 class ComposingArticleTemplateList(APIView):
     def get(self, request):
         articles = ComposingArticleTemplate.objects.all()
