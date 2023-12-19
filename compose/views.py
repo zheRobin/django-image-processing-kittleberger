@@ -11,9 +11,8 @@ from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from app.util import *
 from master.util import *
+from .util import *
 from master.models import *
-from functools import reduce
-from operator import and_
 import json
 
 # Create your views here.
@@ -272,12 +271,12 @@ class ComposingArticleTemplateList(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-class ComposingAPIView(APIView):
+class ComposingAPIView(APIView):    
     def get(self, request):
         products = Composing.objects.all()
         serializer = ComposingSerializer(products, many=True)
         return Response(serializer.data)
-
+    
     def post(self, request, format=None):
         data = request.data
         data['created_by_id'] = request.user.id
@@ -300,7 +299,7 @@ class ComposingAPIView(APIView):
             except Exception as e:
                 return Response(error(str(e)))
         try:
-            composing = Composing.objects.create(name = data['name'], template_id = data['template_id'], cdn_url = product, png_result = png_result,created_by_id = request.user.id, modified_by_id = request.user.id)
+            composing = Composing.objects.create(name = validate_name(data['name']), template_id = data['template_id'], cdn_url = product, png_result = png_result,created_by_id = request.user.id, modified_by_id = request.user.id)
             composing.articles.set(articles)
         except Exception as e:
             return Response(error(str(e)))
@@ -343,7 +342,7 @@ class ComposingAPIView(APIView):
             except Exception as e:
                 return Response(error(str(e)))
         try:
-            composing.name = data.get('name', composing.name)
+            composing.name = validate_name(data.get('name', composing.name))
             composing.modified_by_id = request.user.id
             composing.save()
 
