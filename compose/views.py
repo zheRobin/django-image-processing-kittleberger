@@ -298,6 +298,7 @@ class ComposingAPIView(APIView):
             except Exception as e:
                 return Response(error(str(e)))
         try:
+            print(validate_name(data['name']))
             composing = Composing.objects.create(name = validate_name(data['name']), template_id = data['template_id'], cdn_url = product, png_result = png_result,created_by_id = request.user.id, modified_by_id = request.user.id)
             composing.articles.set(articles)
         except Exception as e:
