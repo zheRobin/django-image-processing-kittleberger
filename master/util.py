@@ -100,7 +100,7 @@ def convert_to_png(input_image_data):
     return png_image_data
 def get_transparent(input_image_data):
     input_img = cv2.imdecode(np.frombuffer(input_image_data, np.uint8), cv2.IMREAD_UNCHANGED)
-    removed_bg_img = remove(input_img, model='u2net', alpha_matting=True, alpha_matting_foreground_threshold=40,alpha_matting_background_threshold=10, alpha_matting_erode_size=10, alpha_matting_base_size = 1000, bgcolor=(255,255,255,255))
+    removed_bg_img = remove(input_img, model='u2net', alpha_matting=True, alpha_matting_foreground_threshold=40,alpha_matting_background_threshold=10, alpha_matting_erode_size=3, alpha_matting_base_size = 1000, bgcolor=(255,255,255,255))
     gray_img = cv2.cvtColor(removed_bg_img, cv2.COLOR_BGR2GRAY)
     blur_img = cv2.GaussianBlur(gray_img, (15, 15), 0)
     _, thresh_img = cv2.threshold(blur_img, 230, 255, cv2.THRESH_BINARY_INV)

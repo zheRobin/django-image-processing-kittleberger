@@ -101,10 +101,6 @@ class TemplateAPIView(APIView):
             resolution_dpi = template.resolution_dpi
             if 'name' in data:
                 template.name = data['name']
-            if 'type' in data:
-                template.file_type = data['type']
-                resolution_dpi = resolution_dpi_mapping.get(data['type'], 72)
-                template.resolution_dpi = resolution_dpi
             if 'is_deleted' in data and json.loads(data['is_deleted'].lower()) == True:
                 template.preview_image_cdn_url = ""
             if 'preview_image' in request.FILES:
@@ -158,6 +154,9 @@ class TemplateAPIView(APIView):
                     placements_ids.append(placement_obj.pk)
                     pos_index += 1
                 template.article_placements.set(placements_ids)
+            if 'type' in data and data['type'] != template.file_type:
+                template.save()
+                return Response(error("Not allowed to change file extension!"))
             template.save()
 
             serializer = ComposingTemplateSerializer(template)
