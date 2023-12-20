@@ -8,6 +8,7 @@ urlpatterns = [
     path('', include(router.urls)),
     path('templates/', TemplateAPIView.as_view()),
     path('templates/<int:pk>/', TemplateAPIView.as_view()),
+    path('manage/', ComposingTemplateDetail.as_view()),
     path('templates/filter', ComposingTemplateFilter.as_view()),
     path('article-template/', ComposingArticleTemplateList.as_view()),
     path('article/', ArticleAPIView.as_view()),

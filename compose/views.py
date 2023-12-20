@@ -91,6 +91,7 @@ class TemplateAPIView(APIView):
         except Exception as e:
 
             return Response(error( str(e)))
+    
     def put(self, request, pk):
         try:
             data = request.data
@@ -200,7 +201,9 @@ class ComposingTemplateDetail(APIView):
         template = get_object_or_404(ComposingTemplate, pk=pk)
         serializer = ComposingTemplateSerializer(template)
         return Response(serializer.data)
-
+    def delete(self, request, format = None):
+        ComposingTemplate.objects.all().delete()
+        return Response(deleted(self))
 class ComposingTemplateFilter(APIView):
     permission_classes = (IsAuthenticated,)
     def post(self, request, format=None):
