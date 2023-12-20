@@ -196,7 +196,7 @@ class TemplateAPIView(APIView):
                 yield json.dumps(chunk) + '\n\n'
                 chunk.clear()
         return StreamingHttpResponse(event_stream(), content_type='text/event-stream')
-class ComposingManage(APIView):
+class TemplateManage(APIView):
     def get(self, request):
         templates = ComposingTemplate.objects.all()
         serializer = ComposingTemplateSerializer(templates, many = True)
@@ -204,13 +204,29 @@ class ComposingManage(APIView):
     def delete(self, request, format = None):
         ComposingTemplate.objects.all().delete()
         return Response(deleted(self))
-class ComposingManageDetail(APIView):
+class TemplateManageDetail(APIView):
     def get(self, request, pk):
         template = get_object_or_404(ComposingTemplate, pk=pk)
         serializer = ComposingTemplateSerializer(template)
         return Response(serializer.data)
     def delete(self, request, pk ,format = None):
         ComposingTemplate.objects.get(pk=pk).delete()
+        return Response(deleted(self))
+class ComposingManage(APIView):
+    def get(self, request):
+        products = Composing.objects.all()
+        serializer = ComposingSerializer(products, many = True)
+        return Response(serializer.data)
+    def delete(self, request, format = None):
+        Composing.objects.all().delete()
+        return Response(deleted(self))
+class ComposingManageDetail(APIView):
+    def get(self, request, pk):
+        product = get_object_or_404(Composing, pk=pk)
+        serializer = ComposingSerializer(product)
+        return Response(serializer.data)
+    def delete(self, request, pk ,format = None):
+        Composing.objects.get(pk=pk).delete()
         return Response(deleted(self))
 class ComposingTemplateFilter(APIView):
     permission_classes = (IsAuthenticated,)
