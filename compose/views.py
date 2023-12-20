@@ -202,7 +202,14 @@ class TemplateManage(APIView):
         serializer = ComposingTemplateSerializer(templates, many = True)
         return Response(serializer.data)
     def delete(self, request, format = None):
-        ComposingTemplate.objects.all().delete()
+        templates = ComposingTemplate.objects.all()
+        image_urls = []
+        for template in templates:
+            image_urls.append(template.bg_image_cdn_url)
+            if template.preview_image_cdn_url != "":
+                image_urls.append(template.preview_image_cdn_url)
+        s3_delete(image_urls)
+        templates.delete()
         return Response(deleted(self))
 class TemplateManageDetail(APIView):
     def get(self, request, pk):
@@ -210,15 +217,28 @@ class TemplateManageDetail(APIView):
         serializer = ComposingTemplateSerializer(template)
         return Response(serializer.data)
     def delete(self, request, pk ,format = None):
-        ComposingTemplate.objects.get(pk=pk).delete()
+        template = ComposingTemplate.objects.get(pk=pk)
+        image_urls = [template.bg_image_cdn_url]
+        if template.preview_image_cdn_url != "":
+            image_urls.append(template.preview_image_cdn_url)
+        s3_delete(image_urls)
+        template.delete()
         return Response(deleted(self))
 class ComposingManage(APIView):
     def get(self, request):
         products = Composing.objects.all()
         serializer = ComposingSerializer(products, many = True)
         return Response(serializer.data)
-    def delete(self, request, format = None):
-        Composing.objects.all().delete()
+    def delete(self, request, format=None):
+        products = Composing.objects.all()
+        image_urls = []
+        for product in products:
+            image_urls.append(product.cdn_url)
+            if product.png_result != "":
+                image_urls.append(product.png_result)
+        s3_delete(image_urls)
+
+        products.delete()
         return Response(deleted(self))
 class ComposingManageDetail(APIView):
     def get(self, request, pk):
@@ -226,7 +246,12 @@ class ComposingManageDetail(APIView):
         serializer = ComposingSerializer(product)
         return Response(serializer.data)
     def delete(self, request, pk ,format = None):
-        Composing.objects.get(pk=pk).delete()
+        product = Composing.objects.get(pk=pk)
+        image_urls = [product.cdn_url]
+        if product.png_result != "":
+            image_urls.append(product.png_result)
+        s3_delete(image_urls)
+        product.delete()
         return Response(deleted(self))
 class ComposingTemplateFilter(APIView):
     permission_classes = (IsAuthenticated,)

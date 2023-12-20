@@ -3,6 +3,7 @@ from rest_framework import status
 import boto3, environ, mimetypes
 from botocore.exceptions import NoCredentialsError
 from rest_framework.response import Response
+from urllib.parse import urlparse
 env = environ.Env()
 environ.Env.read_env()
 def success(data):
@@ -83,7 +84,12 @@ def get_s3_config():
     )
     s3_client = session.client('s3')
     return s3_client
-
+def parse_s3_object_key_from_url(url):
+    parsed_url = urlparse(url)
+    path = parsed_url.path
+    if path.startswith('/'):
+        return path[1:]
+    return path
 def s3_upload(file, path):
     s3_client, s3_bucket, s3_endpoint = get_s3_config(), env('S3_BUCKET_NAME'), env('S3_ENDPOINT_URL')
     try:
@@ -92,5 +98,14 @@ def s3_upload(file, path):
     except NoCredentialsError:
         return Response(error("No AWS credentials found"))
     return s3_endpoint + path
+def s3_delete(image_urls):
+    s3_client = get_s3_config()
+    s3_bucket = env('S3_BUCKET_NAME')
+    objects = [{'Key': parse_s3_object_key_from_url(url)} for url in image_urls]
+    try:
+        s3_client.delete_objects(Bucket=s3_bucket, Delete={'Objects': objects})
+    except NoCredentialsError:
+        return Response(error("No AWS credentials found"))
+    return True
 def handle_uploaded_file(f):
     default_storage.save( f.name, f)
