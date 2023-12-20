@@ -251,6 +251,7 @@ class ComposingManageDetail(APIView):
         if product.png_result != "":
             image_urls.append(product.png_result)
         s3_delete(image_urls)
+        print(image_urls)
         product.delete()
         return Response(deleted(self))
 class ComposingTemplateFilter(APIView):
