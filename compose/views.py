@@ -281,7 +281,6 @@ class ComposingTemplateFilter(APIView):
         templates = ComposingTemplate.objects.all().order_by('-created')
         template_count = templates.count()
         products = Composing.objects.all().order_by('-created')
-        articles = Article.objects.filter(articles__in=products).distinct()
         product_count = products.count()
         if brands:
             templates = templates.filter(brand__pk__in=brands).distinct()
@@ -292,11 +291,13 @@ class ComposingTemplateFilter(APIView):
         if article_list:
             product_ids = set(products.values_list('id', flat=True))
             for article_id in article_list:
-                current_article_product_ids = set(products.filter(articles__mediaobject_id=article_id).values_list('id', flat=True))
+                current_article_product_ids = set(products.filter(articles__article_number=article_id).values_list('id', flat=True))
                 product_ids.intersection_update(current_article_product_ids)
             products = products.filter(id__in=product_ids) 
         templates = templates.annotate(count=Count('article_placements')).filter(article_filter)
         products = products.annotate(count=Count('articles')).filter(article_filter)
+        articles = Article.objects.filter(articles__in=products).distinct()
+        
         paginator = LimitOffsetPagination()
         paginator.default_limit = limit
         paginator.offset = offset
