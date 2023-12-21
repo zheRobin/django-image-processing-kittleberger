@@ -129,6 +129,7 @@ class UserListAPIView(APIView):
             user_data = request.data
             if 'password' in user_data and 'email' in user_data:
                 user = User.objects.create(email = user_data['email'], username = user_data['name'])
+                user.is_staff = user_data.get('is_admin', False)
                 user.set_password(user_data['password'])
                 user.save()
                 token = get_tokens_for_user(user)
@@ -153,6 +154,7 @@ class UserListAPIView(APIView):
                 user.username = data['username']
             if 'password' in data and data['password'].strip():
                 user.set_password(data['password'])
+            user.is_staff = data.get('is_admin', False)
             user.save()
             serializer = UserSerializer(user)
             return Response(updated(self, serializer.data))
