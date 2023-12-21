@@ -4,13 +4,6 @@ from compose.models import *
 class Command(BaseCommand):
 
     def handle(self, *args, **options):
-        if not User.objects.filter(username="superadmin").exists():
-            User.objects.create_superuser(
-                username="superadmin",
-                email="superuser@email.com",
-                password="superuser123"
-            )
-
         if not User.objects.filter(username="admin").exists():
             User.objects.create_admin(
                 username="admin",
