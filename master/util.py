@@ -108,9 +108,21 @@ def get_transparent(input_image_data):
     result_image[thresh_img == 0] = (0, 0, 0, 0)
     _, output_img_data = cv2.imencode('.png', result_image)
     return output_img_data.tobytes()
+def validate_image_url(url):   
+    try:
+        response = requests.get(url)
+        if response.status_code != 200 or not response.content:
+            return None
+        Image.open(BytesIO(response.content))
+        return response.content
+    except Exception as e:
+        print(str(e))
+        return None
 def process_article(article, template):
     url = article['tiff_url'] if template.file_type == 'TIFF' and article.get('tiff_url',None) is not None else article['render_url']
-    response_image_data = requests.get(url).content
+    response_image_data = validate_image_url(url)
+    if not response_image_data:
+        return None
     if article['is_transparent'] == True or article['is_transparent']:
         img = Image.open(BytesIO(remove(response_image_data)))
         product_bbox = img.split()[-1].filter(ImageFilter.MinFilter(3)).getbbox()
@@ -130,10 +142,15 @@ def process_article(article, template):
     return product
 def compose_render(template, articles):
     bg_url= template.bg_image_cdn_url
-    background = Image.open(BytesIO(requests.get(bg_url).content))
+    bg_image_content = validate_image_url(bg_url)
+    if not bg_image_content:
+        return None
+    background = Image.open(BytesIO(bg_image_content))
     articles = sorted(articles, key=lambda x: x.get('z_index', 0))    
     for article in articles:
         product = process_article(article, template)
+        if product is None:
+            continue
         if (isinstance(article.get('left'), (int, float)) and 
             isinstance(article.get('top'), (int, float)) and 
             isinstance(article.get('width'), (int, float)) and
