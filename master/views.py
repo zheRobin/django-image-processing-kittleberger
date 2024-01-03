@@ -127,6 +127,7 @@ class ProductFilterAPIView(APIView):
     def get(self, request, format = None):
         file_id = Document.objects.latest('id').file_id
         product = request.GET.get('product', None)
+        print("Product:", product)
         countries = request.GET.get('country', '')
         country_ids = [country_id.strip() for country_id in countries.split(',') if country_id.strip()]
         country_list = Country.objects.filter(id__in=country_ids)
@@ -135,7 +136,8 @@ class ProductFilterAPIView(APIView):
         iter_limit = int(request.GET.get('limit', 30))
         query = []
         results = []
-        regex_product = re.compile(product, re.IGNORECASE) if product else None
+        regex_product = re.compile(re.escape(product), re.IGNORECASE) if product else None
+        print("Reg Str:", regex_product)
         if regex_product:
             query.append({"$or": [{"linked_products.mfact_key": regex_product}, {"linked_products.name": regex_product}]})
 
@@ -158,7 +160,9 @@ class ProductFilterAPIView(APIView):
             if render_url and linked_products:
                 document_id = str(document.get('_id', ''))
                 for product in linked_products:
-                    if regex_product is None or regex_product.search(product.get('mfact_key', '')) or regex_product.search(product.get('name', '')):
+                    mfact_key = product.get('mfact_key') if isinstance(product.get('mfact_key'), (str, bytes)) else ''
+                    name = product.get('name') if isinstance(product.get('name'), (str, bytes)) else ''
+                    if regex_product is None or regex_product.search(mfact_key) or regex_product.search(name):
                         results.append({'document_id': document_id,'mediaobject_id':document.get('id',''), 'article_number': product.get('mfact_key', ''), 'name': product.get('name', ''), 'render_url': render_url, 'tiff_url': tiff_url})
                     if len(results) == iter_limit:
                         break
