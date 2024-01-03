@@ -127,7 +127,6 @@ class ProductFilterAPIView(APIView):
     def get(self, request, format = None):
         file_id = Document.objects.latest('id').file_id
         product = request.GET.get('product', None)
-        print("Product:", product)
         countries = request.GET.get('country', '')
         country_ids = [country_id.strip() for country_id in countries.split(',') if country_id.strip()]
         country_list = Country.objects.filter(id__in=country_ids)
@@ -137,7 +136,6 @@ class ProductFilterAPIView(APIView):
         query = []
         results = []
         regex_product = re.compile(re.escape(product), re.IGNORECASE) if product else None
-        print("Reg Str:", regex_product)
         if regex_product:
             query.append({"$or": [{"linked_products.mfact_key": regex_product}, {"linked_products.name": regex_product}]})
 
