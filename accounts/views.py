@@ -31,7 +31,7 @@ class LoginAPIView(APIView):
             'user': user_serializer.data,
             'access_token': token["access_token"],
         }
-        return Response(success( response_data))
+        return Response(success(response_data))
 
     def get(self, request):
         token = request.GET.get('token')
@@ -84,8 +84,15 @@ class UserDetailAPIView(APIView):
     def get(self, request):
         try:
             user = request.user
+            token = get_tokens_for_user(user)
+            user.last_login = timezone.now()
+            user.save()
             serializer = UserSerializer(user)
-            return Response(success( serializer.data))
+            response_data = {
+                'user': serializer.data,
+                'access_token': token["access_token"],
+            }
+            return Response(success(response_data))
         except ObjectDoesNotExist:
             return Response(error(  "User does not exist."))
         except Exception as e:
@@ -150,8 +157,8 @@ class UserListAPIView(APIView):
             user = User.objects.get(id=user_id)
             if 'email' in data and data['email'].strip():
                 user.email = data['email']
-            if 'username' in data and data['username'].strip():
-                user.username = data['username']
+            if 'name' in data and data['name'].strip():
+                user.username = data['name']
             if 'password' in data and data['password'].strip():
                 user.set_password(data['password'])
             user.is_staff = data.get('is_admin', False)

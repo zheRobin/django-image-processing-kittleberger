@@ -1,4 +1,6 @@
 from rest_framework import serializers
+
+from accounts.serializers import UserSerializer
 from .models import *
 from master.models import *
 from django.conf import settings
@@ -57,6 +59,8 @@ class ArticleSerializer(serializers.ModelSerializer):
 class ComposingSerializer(serializers.ModelSerializer):
     template = ComposingTemplateSerializer()
     articles = ArticleSerializer(many=True)
+    created_by = UserSerializer()
+    modified_by = UserSerializer()
     class Meta:
         model = Composing
         fields = '__all__'

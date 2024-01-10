@@ -48,8 +48,8 @@ class APIKeyAPIView(APIView):
     def get(self, request):
         try:
             api_keys = APIKey.objects.all()
-            data = APIKeySerializer(api_keys, many=True).data
-            return Response(success( data))
+            serializer = APIKeySerializer(api_keys, many=True)
+            return Response(success(serializer.data))
         except APIKey.DoesNotExist:
             return Response(error( "Bad request"))
 
@@ -57,7 +57,9 @@ class APIKeyAPIView(APIView):
         try:
             apk_key = APIKey.objects.get(pk=pk)
             apk_key.delete()
-            return Response(success( str(apk_key.apikey) + ": Deleted"))
+            api_keys = APIKey.objects.all()
+            serializer = APIKeySerializer(api_keys, many=True)
+            return Response(success(serializer.data))
         except APIKey.DoesNotExist:
             return Response(error( "Bad request"))
 class ParseAPIView(APIView):
