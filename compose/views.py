@@ -279,14 +279,45 @@ class ComposingTemplateFilter(APIView):
                 number = int(number)
                 article_filter |= Q(count=number)
         templates = ComposingTemplate.objects.all().order_by('-created')
-        template_count = templates.count()
-        products = Composing.objects.all().order_by('-created')
-        product_count = products.count()
         if brands:
             templates = templates.filter(brand__pk__in=brands).distinct()
-            products = products.filter(template__brand__pk__in=brands)
         if applications:
             templates = templates.filter(application__pk__in=applications).distinct()
+        templates = templates.annotate(count=Count('article_placements')).filter(article_filter)
+        
+        paginator = LimitOffsetPagination()
+        paginator.default_limit = limit
+        paginator.offset = offset
+        context_template = paginator.paginate_queryset(templates, request)
+        template_serializer = ComposingTemplateSerializer(context_template, many=True)
+        result = {
+            "templates":template_serializer.data,
+        }
+        return Response(success(result))
+class ComposingProductFilter(APIView):
+    permission_classes = (IsAuthenticated,)
+    def post(self, request, format=None):
+        try:
+            limit = int(request.data.get('limit', 10))
+            offset = int(request.data.get('offset', 0))
+        except ValueError:
+            return Response(error( 'Invalid limit/offset.'))
+        brands = request.data.get('brand', [])
+        applications = request.data.get('application', [])
+        article_numbers = request.data.get('article_number', [])
+        article_list = request.data.get('article_list',[])
+        article_filter = Q()
+        for number in article_numbers:
+            if '+' in number:
+                number = int(number.replace('+', ''))
+                article_filter |= Q(count__gte=number)
+            else:
+                number = int(number)
+                article_filter |= Q(count=number)
+        products = Composing.objects.all().order_by('-created')
+        if brands:
+            products = products.filter(template__brand__pk__in=brands).distinct()
+        if applications:
             products = products.filter(template__application__pk__in=applications).distinct()
         if article_list:
             product_ids = set(products.values_list('id', flat=True))
@@ -294,7 +325,6 @@ class ComposingTemplateFilter(APIView):
                 current_article_product_ids = set(products.filter(articles__article_number=article_id).values_list('id', flat=True))
                 product_ids.intersection_update(current_article_product_ids)
             products = products.filter(id__in=product_ids) 
-        templates = templates.annotate(count=Count('article_placements')).filter(article_filter)
         products = products.annotate(count=Count('articles')).filter(article_filter)
         articles = Article.objects.filter(articles__in=products).distinct()
         
@@ -302,16 +332,9 @@ class ComposingTemplateFilter(APIView):
         paginator.default_limit = limit
         paginator.offset = offset
         context_products = paginator.paginate_queryset(products, request)
-        context_template = paginator.paginate_queryset(templates, request)
-        template_serializer = ComposingTemplateSerializer(context_template, many=True)
         product_serializer = ComposingSerializer(context_products, many=True)
         article_serializer = ArticleSerializer(articles, many=True)
-        document_last_update = Document.objects.latest('id').upload_date
         result = {
-            "document_last_update":document_last_update,
-            "template_count":template_count,
-            "product_count":product_count,
-            "templates":template_serializer.data,
             "products":product_serializer.data,
             "articles":article_serializer.data,
         }
@@ -452,7 +475,6 @@ class ComposingArticleTemplateDetail(APIView):
         template = self.get_object(pk)
         template.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
 class ComposingDetail(APIView):
     def get_object(self, pk):
         try:
@@ -496,17 +518,24 @@ class PageDataAPIView(APIView):
         applications = Application.objects.all()
         countries = Country.objects.all()
         templates = ComposingTemplate.objects.all()
+        products = Composing.objects.all()
+        template_count = templates.count()
+        product_count = products.count()
         brand_data,application_data = {},{}
         for brand_el in brands:
-            template_count = templates.filter(brand=brand_el).count()
-            brand_data[str(brand_el.index)] = template_count
+            tel_c = templates.filter(brand=brand_el).count()
+            brand_data[str(brand_el.index)] = tel_c
         for application_el in applications:
-            template_count = templates.filter(application=application_el).count()
-            application_data[str(application_el.index)] = template_count
+            tel_c = templates.filter(application=application_el).count()
+            application_data[str(application_el.index)] = tel_c
         brand_serializer = BrandSerializer(brands, many=True)
         application_serializer = ApplicationSerializer(applications, many=True)
         country_serializer = CountrySerializer(countries, many=True)
+        document_last_update = Document.objects.latest('id').upload_date
         response_data = {
+            "document_last_update":document_last_update,
+            "template_count":template_count,
+            "product_count":product_count,
             'brands': brand_serializer.data,
             'applications': application_serializer.data,
             'country_list':country_serializer.data,            

@@ -13,6 +13,7 @@ urlpatterns = [
     path('composing/manage/', ComposingManage.as_view()),
     path('composing/manage/<int:pk>', ComposingManageDetail.as_view()),
     path('templates/filter', ComposingTemplateFilter.as_view()),
+    path('products/filter', ComposingProductFilter.as_view()),
     path('article-template/', ComposingArticleTemplateList.as_view()),
     path('article/', ArticleAPIView.as_view()),
     path('product/', ComposingAPIView.as_view()),
