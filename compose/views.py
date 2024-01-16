@@ -269,7 +269,6 @@ class ComposingTemplateFilter(APIView):
         brands = request.data.get('brand', [])
         applications = request.data.get('application', [])
         article_numbers = request.data.get('article_number', [])
-        article_list = request.data.get('article_list',[])
         article_filter = Q()
         for number in article_numbers:
             if '+' in number:
@@ -433,7 +432,7 @@ class ComposingAPIView(APIView):
             return Response(error(str(e)))
         composing = Composing.objects.get(id = data['id'])
         serializer = ComposingSerializer(composing)
-        return Response(updated(self, serializer.data))  
+        return Response(updated(self, serializer.data))
 class RefreshAPIView(APIView):
     def post(self, request, format=None):
         data = request.data
@@ -496,9 +495,15 @@ class ComposingDetail(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        composing = self.get_object(pk)
-        composing.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        try:
+            composing = self.get_object(pk)
+            s3_delete([composing.cdn_url])
+            if composing.png_result is not '':
+                s3_delete([composing.png_result])
+            composing.delete()
+            return Response(success("Deleted"))
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 class ArticleAPIView(APIView):
     def get(self, request):
         articles = Article.objects.all()
