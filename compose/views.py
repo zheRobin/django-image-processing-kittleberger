@@ -95,31 +95,31 @@ class TemplateAPIView(APIView):
     def put(self, request, pk):
         try:
             data = request.data
-            if int(data['resolution_width'])*int(data['resolution_height'])>=10000000:
+
+            if int(data['resolution_width'])*int(data['resolution_height']) > 10000000:
                 return Response(error("Image resolution must be under 10M pixel"))
+
             template = ComposingTemplate.objects.get(pk=pk)
-            resolution_dpi_mapping = {"PNG": 72, "JPEG": 72, "TIFF": 300}
-            resolution_dpi = template.resolution_dpi
+
             if 'name' in data:
                 template.name = data['name']
+
             if 'is_deleted' in data and json.loads(data['is_deleted'].lower()) == True:
                 template.preview_image_cdn_url = ""
+
             if 'preview_image' in request.FILES:
                 preview_image = request.FILES['preview_image']
-                template.preview_image_cdn_url = resize_save_img(preview_image, (400,int(400*int(data['resolution_height'])/int(data['resolution_width']))),'JPEG','mediafiles/preview_images/',72)
+                template.preview_image_cdn_url = resize_save_img(preview_image, (400, int(400*data['resolution_height']/data['resolution_width'])),'JPEG','mediafiles/preview_images/',72)
 
             if 'background_image' in request.FILES:
                 background_image = request.FILES['background_image']
-                template.bg_image_cdn_url = resize_save_img(background_image, (int(data['resolution_width']),int(data['resolution_height'])),'PNG','mediafiles/background_images/',72)
-            if 'resolution_width' in data and 'resolution_height' in data:
-                if (template.resolution_width, template.resolution_height) != (int(data['resolution_width']), int(data['resolution_height'])):
-                    template.resolution_width = data['resolution_width']
-                    template.resolution_height = data['resolution_height']
-                    template.bg_image_cdn_url = resize_save_img(template.bg_image_cdn_url, (template.resolution_width, template.resolution_height),'PNG','mediafiles/background_images/',72)
+                template.bg_image_cdn_url = resize_save_img(background_image, (data['resolution_width'], data['resolution_height']),'PNG','mediafiles/background_images/',72)
+
             if 'is_shadow' in data:
                 template.is_shadow = json.loads(data['is_shadow'].lower())
 
             brand_ids, app_ids, placements_ids = [], [], []
+
             if 'brands' in data:
                 for brand in data['brands'].split(','):
                     if brand.isdigit():
@@ -151,25 +151,25 @@ class TemplateAPIView(APIView):
                         created_by_id = request.user.pk, 
                         modified_by_id = request.user.pk
                     )
-                    
                     placements_ids.append(placement_obj.pk)
                     pos_index += 1
                 template.article_placements.set(placements_ids)
+
             if 'type' in data and data['type'] != template.file_type:
                 template.save()
                 return Response(error("Not allowed to change file extension!"))
             template.save()
 
             serializer = ComposingTemplateSerializer(template)
-            return Response(created(self, serializer.data))
+            return Response(success(serializer.data))
         except ComposingTemplate.DoesNotExist:
-            return Response(error( "The playlist does not exist"))
+            return Response(error("The playlist does not exist"))
         except Brand.DoesNotExist:
-            return Response(error( "The brand does not exist"))
+            return Response(error("The brand does not exist"))
         except Application.DoesNotExist:
-            return Response(error( "The applications does not exist"))
-        except Exception as e:
-            return Response(error( str(e)))
+            return Response(error("The applications does not exist"))
+        except:
+            return Response(error('Something went wrong'))
     def delete(self, request):
         template_pk = request.POST.get('pk')
         template = ComposingTemplate.objects.get(pk=template_pk)
