@@ -170,6 +170,7 @@ class TemplateAPIView(APIView):
             return Response(error("The applications does not exist"))
         except:
             return Response(error('Something went wrong'))
+     
     def delete(self, request):
         template_pk = request.POST.get('pk')
         template = ComposingTemplate.objects.get(pk=template_pk)
@@ -216,8 +217,13 @@ class TemplateManageDetail(APIView):
     permission_classes = (IsAuthenticated,IsAdminUser)
     def get(self, request, pk):
         template = get_object_or_404(ComposingTemplate, pk=pk)
-        serializer = ComposingTemplateSerializer(template)
-        return Response(serializer.data)
+        composing_list = Composing.objects.filter(template=template)
+        serializer = ComposingSerializer(composing_list, many=True)
+        if not serializer.data:
+            return Response(not_found("No composes found"))
+        else:
+            id_string = ', '.join([str(item['id']) for item in serializer.data])
+            return Response(success(id_string))
     def delete(self, request, pk ,format = None):
         template = ComposingTemplate.objects.get(pk=pk)
         image_urls = [template.bg_image_cdn_url]
@@ -498,7 +504,7 @@ class ComposingDetail(APIView):
         try:
             composing = self.get_object(pk)
             s3_delete([composing.cdn_url])
-            if composing.png_result is not '':
+            if composing.png_result != '':
                 s3_delete([composing.png_result])
             composing.delete()
             return Response(success("Deleted"))
