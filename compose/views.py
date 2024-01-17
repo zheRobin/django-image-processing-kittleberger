@@ -384,7 +384,6 @@ class ComposingAPIView(APIView):
             except Exception as e:
                 return Response(error(str(e)))
         try:
-            print(validate_name(data['name']))
             composing = Composing.objects.create(name = validate_name(data['name']), template_id = data['template_id'], cdn_url = product, png_result = png_result,created_by_id = request.user.id, modified_by_id = request.user.id)
             composing.articles.set(articles)
         except Exception as e:
@@ -443,9 +442,9 @@ class RefreshAPIView(APIView):
     def post(self, request, format=None):
         data = request.data
         template_id = data.get('template_id')
+        articles_data = data.get('articles', [])
         if not template_id:
             return Response(error("Invalid or missing template_id"))
-        articles_data = data.get('articles', [])
         try:
             template = ComposingTemplate.objects.get(id=template_id)
         except ComposingTemplate.DoesNotExist:

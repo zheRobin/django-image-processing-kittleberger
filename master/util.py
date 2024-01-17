@@ -1,3 +1,4 @@
+from ctypes import alignment
 from django.conf import settings
 from lxml import etree as ET
 from urllib.parse import urlparse
@@ -140,6 +141,26 @@ def process_article(article, template):
         new_size = media.size
     product = media.resize(new_size, Image.LANCZOS)
     return product
+def calc_position(article, template):
+    alignment = article['alignment']
+    scaling = article['scaling']
+
+    switch = {
+        "top-left": [template.position_x, template.position_y],
+        "top-center": [template.position_x + template.width * (1 - scaling) / 2, template.position_y],
+        "top-right": [template.position_x + template.width * (1 - scaling), template.position_y],
+        "middle-left": [template.position_x, template.position_y + template.height * (1 - scaling) / 2],
+        "middle-center": [template.position_x + template.width * (1 - scaling) / 2, template.position_y + template.height * (1 - scaling) / 2],
+        "middle-right": [template.position_x + template.width * (1 - scaling), template.position_y + template.height * (1 - scaling) / 2],
+        "bottom-left": [template.position_x, template.position_y + template.height * (1 - scaling)],
+        "bottom-center": [template.position_x + template.width * (1 - scaling) / 2, template.position_y + template.height * (1 - scaling)],
+        "bottom-right": [template.position_x + template.width * (1 - scaling), template.position_y + template.height * (1 - scaling)],
+    }
+    position = switch.get(alignment, [template.position_x, template.position_y])
+    article['left'] = position[0]
+    article['top'] = position[1]
+
+    return article
 def compose_render(template, articles):
     bg_url= template.bg_image_cdn_url
     bg_image_content = validate_image_url(bg_url)
@@ -149,6 +170,15 @@ def compose_render(template, articles):
     articles = sorted(articles, key=lambda x: x.get('z_index', 0))    
     for article in articles:
         product = process_article(article, template)
+        article_placement = None
+        for placement in template.article_placements.all():
+            if placement.pos_index == article['pos_index']:
+                article_placement = placement
+                break
+        if article_placement:
+            article = calc_position(article, article_placement)
+        else:
+            print('No matching article placement found!')
         if product is None:
             continue
         if (isinstance(article.get('left'), (int, float)) and 
