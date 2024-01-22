@@ -577,14 +577,30 @@ class PageDataAPIView(APIView):
         brands = Brand.objects.all()
         applications = Application.objects.all()
         countries = Country.objects.all()
-
+        templates = ComposingTemplate.objects.all()
+        products = Composing.objects.all()
+        template_count = templates.count()
+        product_count = products.count()
+        brand_data,application_data = {},{}
+        for brand_el in brands:
+            tel_c = templates.filter(brand=brand_el).count()
+            brand_data[str(brand_el.index)] = tel_c
+        for application_el in applications:
+            tel_c = templates.filter(application=application_el).count()
+            application_data[str(application_el.index)] = tel_c
         brand_serializer = BrandSerializer(brands, many=True)
         application_serializer = ApplicationSerializer(applications, many=True)
         country_serializer = CountrySerializer(countries, many=True)
+        document_last_update = Document.objects.latest('id').upload_date
         response_data = {
+            "document_last_update":document_last_update,
+            "template_count":template_count,
+            "product_count":product_count,
             'brands': brand_serializer.data,
             'applications': application_serializer.data,
-            'country_list':country_serializer.data
+            'country_list':country_serializer.data,            
+            "brand_data":brand_data,
+            "application_data":application_data,
         }
         return Response(success(response_data))
     def put(self, request):
@@ -623,14 +639,30 @@ class PageDataAPIView(APIView):
         brands = Brand.objects.all()
         applications = Application.objects.all()
         countries = Country.objects.all()
-
+        templates = ComposingTemplate.objects.all()
+        products = Composing.objects.all()
+        template_count = templates.count()
+        product_count = products.count()
+        brand_data,application_data = {},{}
+        for brand_el in brands:
+            tel_c = templates.filter(brand=brand_el).count()
+            brand_data[str(brand_el.index)] = tel_c
+        for application_el in applications:
+            tel_c = templates.filter(application=application_el).count()
+            application_data[str(application_el.index)] = tel_c
         brand_serializer = BrandSerializer(brands, many=True)
         application_serializer = ApplicationSerializer(applications, many=True)
         country_serializer = CountrySerializer(countries, many=True)
+        document_last_update = Document.objects.latest('id').upload_date
         response_data = {
+            "document_last_update":document_last_update,
+            "template_count":template_count,
+            "product_count":product_count,
             'brands': brand_serializer.data,
             'applications': application_serializer.data,
-            'country_list':country_serializer.data
+            'country_list':country_serializer.data,            
+            "brand_data":brand_data,
+            "application_data":application_data,
         }
         return Response(success(response_data))
     def delete(self, request):
@@ -664,13 +696,29 @@ class PageDataAPIView(APIView):
         brands = Brand.objects.all()
         applications = Application.objects.all()
         countries = Country.objects.all()
-
+        templates = ComposingTemplate.objects.all()
+        products = Composing.objects.all()
+        template_count = templates.count()
+        product_count = products.count()
+        brand_data,application_data = {},{}
+        for brand_el in brands:
+            tel_c = templates.filter(brand=brand_el).count()
+            brand_data[str(brand_el.index)] = tel_c
+        for application_el in applications:
+            tel_c = templates.filter(application=application_el).count()
+            application_data[str(application_el.index)] = tel_c
         brand_serializer = BrandSerializer(brands, many=True)
         application_serializer = ApplicationSerializer(applications, many=True)
         country_serializer = CountrySerializer(countries, many=True)
+        document_last_update = Document.objects.latest('id').upload_date
         response_data = {
+            "document_last_update":document_last_update,
+            "template_count":template_count,
+            "product_count":product_count,
             'brands': brand_serializer.data,
             'applications': application_serializer.data,
-            'country_list':country_serializer.data
+            'country_list':country_serializer.data,            
+            "brand_data":brand_data,
+            "application_data":application_data,
         }
         return Response(success(response_data))
