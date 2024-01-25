@@ -31,8 +31,11 @@ class SetPreviewImageAPIView(APIView):
         preview_img = data.get('preview_img', None)
         if not preview_img:
             return Response(error("Image Content is required"))
+        if template.preview_image_cdn_url.startswith('http'):
+            s3_delete([template.preview_image_cdn_url])
         if preview_img.startswith('http'):
-            template.preview_image_cdn_url = preview_img
+            result = save_preview_image(get_image_base64(preview_img))
+            template.preview_image_cdn_url = result
             template.save()
         elif preview_img.startswith('data:image'):
             result = save_preview_image(preview_img)
@@ -502,9 +505,10 @@ class ComposingDetail(APIView):
     def delete(self, request, pk):
         try:
             composing = self.get_object(pk)
-            s3_delete([composing.cdn_url])
+            image_urls = [composing.cdn_url]
             if composing.png_result != '':
-                s3_delete([composing.png_result])
+                image_urls.append(composing.png_result)
+            s3_delete(image_urls)
             composing.delete()
             return Response(success("Deleted"))
         except Exception as e:
