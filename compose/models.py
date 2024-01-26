@@ -54,7 +54,7 @@ class Article(models.Model):
     article_number = models.CharField(max_length=50)
     mediaobject_id = models.CharField(max_length=50)
     is_transparent = models.BooleanField(default=False)
-    scaling = models.IntegerField()
+    scaling = models.FloatField()
     alignment = models.CharField(max_length=20, default='center')
     height = models.IntegerField()
     width = models.IntegerField()
